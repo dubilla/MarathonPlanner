@@ -9,25 +9,72 @@ import {
   timestamp,
   uuid,
   check,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
-// Users table (for app-specific user data)
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// NextAuth.js required tables
+export const nextAuthUsers = pgTable("User", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").notNull(),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
 });
+
+export const nextAuthAccounts = pgTable(
+  "Account",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => nextAuthUsers.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => ({
+    compoundKey: primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  })
+);
+
+export const nextAuthSessions = pgTable("Session", {
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => nextAuthUsers.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const nextAuthVerificationTokens = pgTable(
+  "VerificationToken",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (vt) => ({
+    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
+);
+
+// Legacy users table removed - now using NextAuth User table
 
 // Training plans table
 export const trainingPlans = pgTable(
   "training_plans",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => nextAuthUsers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
     marathonDate: date("marathon_date").notNull(),
@@ -115,16 +162,36 @@ export const workouts = pgTable(
 );
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+// NextAuth relations
+export const nextAuthUsersRelations = relations(nextAuthUsers, ({ many }) => ({
+  accounts: many(nextAuthAccounts),
+  sessions: many(nextAuthSessions),
   trainingPlans: many(trainingPlans),
 }));
 
+export const nextAuthAccountsRelations = relations(nextAuthAccounts, ({ one }) => ({
+  user: one(nextAuthUsers, {
+    fields: [nextAuthAccounts.userId],
+    references: [nextAuthUsers.id],
+  }),
+}));
+
+export const nextAuthSessionsRelations = relations(nextAuthSessions, ({ one }) => ({
+  user: one(nextAuthUsers, {
+    fields: [nextAuthSessions.userId],
+    references: [nextAuthUsers.id],
+  }),
+}));
+
+// Legacy relations removed
+
+// App relations
 export const trainingPlansRelations = relations(
   trainingPlans,
   ({ one, many }) => ({
-    user: one(users, {
+    user: one(nextAuthUsers, {
       fields: [trainingPlans.userId],
-      references: [users.id],
+      references: [nextAuthUsers.id],
     }),
     weeks: many(trainingWeeks),
   })
@@ -149,8 +216,14 @@ export const workoutsRelations = relations(workouts, ({ one }) => ({
 }));
 
 // Types derived from schema
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+// NextAuth types
+export type NextAuthUser = typeof nextAuthUsers.$inferSelect;
+export type NewNextAuthUser = typeof nextAuthUsers.$inferInsert;
+export type NextAuthAccount = typeof nextAuthAccounts.$inferSelect;
+export type NextAuthSession = typeof nextAuthSessions.$inferSelect;
+export type NextAuthVerificationToken = typeof nextAuthVerificationTokens.$inferSelect;
+
+// Legacy types removed - use NextAuthUser instead
 
 export type TrainingPlan = typeof trainingPlans.$inferSelect;
 export type NewTrainingPlan = typeof trainingPlans.$inferInsert;

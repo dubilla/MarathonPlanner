@@ -22,6 +22,8 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",
     "@neondatabase/serverless": "^1.0.1",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.4",
     "next": "15.4.6",
     "next-auth": "^4.24.11",

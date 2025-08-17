@@ -19,6 +19,7 @@ export const nextAuthUsers = pgTable("User", {
   email: text("email").notNull(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  password: text("password"),
 });
 
 export const nextAuthAccounts = pgTable(

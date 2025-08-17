@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from ".";
 import {
-  users,
+  nextAuthUsers,
   trainingPlans,
   trainingWeeks,
   workouts,
@@ -12,12 +12,12 @@ import {
 
 // User queries
 export const getUserByEmail = async (email: string) => {
-  const result = await db.select().from(users).where(eq(users.email, email));
+  const result = await db.select().from(nextAuthUsers).where(eq(nextAuthUsers.email, email));
   return result[0] || null;
 };
 
 export const getUserById = async (id: string) => {
-  const result = await db.select().from(users).where(eq(users.id, id));
+  const result = await db.select().from(nextAuthUsers).where(eq(nextAuthUsers.id, id));
   return result[0] || null;
 };
 
@@ -121,12 +121,12 @@ export const getPublicTrainingPlans = async (limit = 20) => {
       totalWeeks: trainingPlans.totalWeeks,
       createdAt: trainingPlans.createdAt,
       user: {
-        id: users.id,
-        displayName: users.displayName,
+        id: nextAuthUsers.id,
+        name: nextAuthUsers.name,
       },
     })
     .from(trainingPlans)
-    .leftJoin(users, eq(trainingPlans.userId, users.id))
+    .leftJoin(nextAuthUsers, eq(trainingPlans.userId, nextAuthUsers.id))
     .orderBy(desc(trainingPlans.createdAt))
     .limit(limit);
 };

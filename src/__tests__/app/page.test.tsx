@@ -1,5 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import Home from '@/app/page';
+import { 
+  mockUseSession, 
+  createUnauthenticatedSession 
+} from '../utils/auth-test-utils';
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
@@ -22,6 +26,8 @@ jest.mock('next/link', () => {
 
 describe('Landing Page', () => {
   beforeEach(() => {
+    // Mock unauthenticated state for the header
+    mockUseSession.mockReturnValue(createUnauthenticatedSession());
     render(<Home />);
   });
 
@@ -33,7 +39,7 @@ describe('Landing Page', () => {
 
     it('displays the value proposition', () => {
       expect(
-        screen.getByText(/Create, track, and complete your marathon training plans/)
+        screen.getByText(/Create, track, and complete your marathon training plans with detailed progress monitoring and analytics/)
       ).toBeInTheDocument();
     });
 
@@ -108,9 +114,11 @@ describe('Landing Page', () => {
 
   describe('Footer', () => {
     it('displays app branding', () => {
-      expect(screen.getByText('Marathon Planner')).toBeInTheDocument();
+      // Look for the footer specifically - the brand appears in header too
+      const footer = screen.getByRole('contentinfo');
+      expect(footer).toHaveTextContent('Marathon Planner');
       expect(
-        screen.getByText('Your training companion for marathon success')
+        screen.getByText('Your training companion for marathon success. Create, track, and complete your marathon training plans.')
       ).toBeInTheDocument();
     });
 

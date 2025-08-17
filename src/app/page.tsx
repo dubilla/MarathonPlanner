@@ -1,10 +1,12 @@
 import Link from "next/link";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Hero Section */}
-      <main className="container mx-auto px-4 py-16">
+    <MainLayout>
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Hero Section */}
+        <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-2">
             Marathon Training
@@ -98,20 +100,8 @@ export default function Home() {
             Sign Up Free
           </Link>
         </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="mb-4">
-            <h3 className="text-xl font-bold">Marathon Planner</h3>
-            <p className="text-gray-400">Your training companion for marathon success</p>
-          </div>
-          <div className="text-sm text-gray-400">
-            <p>&copy; 2024 Marathon Planner. Built for runners, by runners.</p>
-          </div>
         </div>
-      </footer>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

@@ -18,16 +18,20 @@ describe('Auth Configuration', () => {
   });
   describe('authOptions', () => {
     it('has correct provider configuration', () => {
-      expect(authOptions.providers).toHaveLength(1);
+      expect(authOptions.providers).toHaveLength(2);
       expect(authOptions.providers[0]).toMatchObject({
         id: 'email',
         type: 'email'
+      });
+      expect(authOptions.providers[1]).toMatchObject({
+        id: 'credentials',
+        type: 'credentials'
       });
     });
 
     it('has correct page configuration', () => {
       expect(authOptions.pages).toEqual({
-        signIn: '/auth',
+        signIn: '/sessions/create',
         verifyRequest: '/auth/verify',
         error: '/auth/error'
       });
@@ -161,6 +165,14 @@ describe('Auth Configuration', () => {
       // The actual email configuration is handled by the mocked provider
       // In a real environment, the provider would use process.env values
       expect(typeof authOptions.providers[0]).toBe('object');
+    });
+
+    it('configures credentials provider correctly', () => {
+      expect(authOptions.providers[1]).toMatchObject({
+        id: 'credentials',
+        type: 'credentials'
+      });
+      expect(typeof authOptions.providers[1]).toBe('object');
     });
   });
 });

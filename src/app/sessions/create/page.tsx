@@ -1,13 +1,13 @@
 import LoginForm from "@/components/auth/LoginForm";
 import MainLayout from "@/components/layout/MainLayout";
 
-export default function AuthPage() {
+export default function CreateSessionPage() {
   return (
     <MainLayout>
       <div className="bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <h1 className="text-center text-3xl font-extrabold text-gray-900 mb-8">
-            Welcome Back
+            Sign In
           </h1>
           <LoginForm />
         </div>

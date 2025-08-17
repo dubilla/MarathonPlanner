@@ -21,7 +21,7 @@ export default function Home() {
           {/* Call-to-Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/auth"
+              href="/users/create"
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg"
             >
               Get Started
@@ -94,7 +94,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold mb-4">Ready to Start Training?</h2>
           <p className="text-xl mb-6">Join thousands of runners achieving their marathon goals</p>
           <Link
-            href="/auth"
+            href="/users/create"
             className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition-colors duration-200 inline-block"
           >
             Sign Up Free

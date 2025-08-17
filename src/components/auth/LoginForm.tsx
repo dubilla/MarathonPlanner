@@ -92,7 +92,7 @@ export default function LoginForm() {
       } else if (result?.ok) {
         console.log("[LOGIN FORM] Signin successful, redirecting...");
         setMessage("Signed in successfully! Redirecting...");
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       console.error("[LOGIN FORM] Exception during signin:", error);

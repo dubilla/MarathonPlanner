@@ -10,6 +10,9 @@ import { eq } from "drizzle-orm";
 export const authOptions: NextAuthOptions = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter: DrizzleAdapter(db) as any, // Type assertion needed for compatibility
+  session: {
+    strategy: "jwt", // Use JWT for credentials provider compatibility
+  },
   debug: process.env.NODE_ENV === "development",
   logger: {
     error(code, metadata) {
@@ -149,7 +152,15 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   callbacks: {
+    jwt: async ({ token, user }) => {
+      // Persist user ID in the token when user signs in
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
+    },
     session: async ({ session, token }) => {
+      // Send user ID to the client session
       if (session?.user && token?.sub) {
         session.user.id = token.sub;
       }

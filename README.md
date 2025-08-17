@@ -9,16 +9,87 @@ A comprehensive marathon training application that allows users to create, manag
 - **Plan Adjustments**: Update future weeks based on progress, injuries, or life events
 - **Analytics Dashboard**: Visual representation of training progress and goal projections
 - **Public Sharing**: All training data is public for community motivation (no privacy controls in v1)
-- **Authentication**: Secure user accounts via NextAuth.js
+- **Authentication**: Secure user accounts via NextAuth.js with email/password and magic links
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15+ with App Router, TypeScript, Tailwind CSS v4
 - **Backend**: Neon PostgreSQL + Drizzle ORM
-- **Authentication**: NextAuth.js with email magic links
+- **Authentication**: NextAuth.js with email/password and magic links
 - **Deployment**: Vercel
 - **Testing**: Jest + React Testing Library
 - **Linting**: ESLint + Prettier
+
+## 🔐 Authentication & Session Strategy
+
+This application uses NextAuth.js with a **JWT session strategy** to support multiple authentication methods:
+
+### Authentication Methods
+
+1. **Email/Password Registration & Login** (RESTful)
+   - `/users/create` - Account registration 
+   - `/sessions/create` - User login
+   - Passwords securely hashed with bcryptjs
+
+2. **Magic Link Authentication**
+   - Passwordless login via email links
+   - Email provider configuration required
+
+### Session Architecture
+
+**JWT Strategy Choice:**
+- We use JWT sessions (`strategy: "jwt"`) instead of database sessions
+- This enables the credentials provider to work alongside the email provider
+- Sessions are stored as signed JWTs in secure HTTP-only cookies
+
+**Why JWT over Database Sessions:**
+- **Credentials Provider Compatibility**: Credentials providers don't work well with database sessions
+- **Stateless**: No session storage required, scales better
+- **Mixed Provider Support**: Works with both email and credentials providers
+- **Simpler Deployment**: No session table maintenance needed
+
+**Database Adapter Role:**
+- DrizzleAdapter handles user creation/management for email provider
+- Provides user lookup functionality for credentials provider  
+- Manages NextAuth tables (User, Account, VerificationToken)
+- Does NOT manage sessions (handled by JWT)
+
+### Required Environment Variables
+
+```env
+# Database
+DATABASE_URL=postgresql://username:password@hostname/database
+
+# NextAuth Core (REQUIRED for JWT signing)
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
+
+# Email Provider (for magic links)
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=your_email@gmail.com
+EMAIL_SERVER_PASSWORD=your_app_password
+EMAIL_FROM=your_email@gmail.com
+
+# UI Configuration
+NEXT_PUBLIC_DB_CONFIGURED=true
+```
+
+**Critical:** `NEXTAUTH_SECRET` is required for JWT signing. Without it, sessions won't work.
+
+### User Flow
+
+1. **New Users**: Homepage → `/users/create` → Register → `/dashboard`
+2. **Returning Users**: Header "Sign In" → `/sessions/create` → Login → `/dashboard`
+3. **Protected Routes**: Unauthenticated access → Redirect to `/sessions/create`
+
+### Route Protection
+
+All protected routes use the `<ProtectedRoute>` component:
+- Checks authentication status via `useAuth()` hook
+- Redirects unauthenticated users to `/sessions/create`
+- Shows loading state during auth check
+- Renders protected content only when authenticated
 
 ## 🚀 Getting Started
 
@@ -117,7 +188,7 @@ src/
 ├── app/              # Next.js App Router pages
 ├── components/       # Reusable React components
 ├── hooks/           # Custom React hooks
-├── lib/             # Utility libraries (Supabase, etc.)
+├── lib/             # Utility libraries (database, auth, etc.)
 ├── types/           # TypeScript type definitions
 ├── utils/           # Utility functions
 └── __tests__/       # Test files
@@ -149,7 +220,7 @@ EMAIL_FROM=your_production_email
 The project includes comprehensive testing setup:
 
 - **Unit Tests**: Jest + React Testing Library
-- **Integration Tests**: Testing components with Supabase integration
+- **Integration Tests**: Testing components with database integration
 - **Test Coverage**: Automated coverage reporting
 
 Run tests with:
@@ -200,7 +271,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Next.js](https://nextjs.org/) for the amazing React framework
-- [Supabase](https://supabase.com/) for backend infrastructure
+- [Neon](https://neon.tech/) for serverless PostgreSQL
+- [Drizzle ORM](https://orm.drizzle.team/) for type-safe database operations
+- [NextAuth.js](https://next-auth.js.org/) for authentication
 - [Tailwind CSS](https://tailwindcss.com/) for styling
 - [Vercel](https://vercel.com/) for hosting
 

@@ -44,7 +44,7 @@ describe('Header', () => {
     });
 
     it('shows sign in button', () => {
-      expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/auth');
+      expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/sessions/create');
     });
 
     it('does not show authenticated navigation', () => {

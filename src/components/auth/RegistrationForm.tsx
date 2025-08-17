@@ -86,7 +86,7 @@ export default function RegistrationForm() {
       } else if (result?.ok) {
         console.log("[REGISTRATION FORM] Signup successful, redirecting...");
         setMessage("Account created successfully! Redirecting...");
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       console.error("[REGISTRATION FORM] Exception during signup:", error);

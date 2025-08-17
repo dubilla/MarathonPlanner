@@ -47,7 +47,7 @@ describe('Landing Page', () => {
       const getStartedButton = screen.getByRole('link', { name: 'Get Started' });
       const learnMoreButton = screen.getByRole('link', { name: 'Learn More' });
 
-      expect(getStartedButton).toHaveAttribute('href', '/auth');
+      expect(getStartedButton).toHaveAttribute('href', '/users/create');
       expect(learnMoreButton).toHaveAttribute('href', '#features');
     });
 
@@ -108,7 +108,7 @@ describe('Landing Page', () => {
 
     it('has sign-up button linking to auth', () => {
       const signUpButton = screen.getByRole('link', { name: 'Sign Up Free' });
-      expect(signUpButton).toHaveAttribute('href', '/auth');
+      expect(signUpButton).toHaveAttribute('href', '/users/create');
     });
   });
 
@@ -144,7 +144,7 @@ describe('Landing Page', () => {
       const authLinks = screen.getAllByRole('link', { name: /Get Started|Sign Up Free/ });
       
       authLinks.forEach(link => {
-        expect(link).toHaveAttribute('href', '/auth');
+        expect(link).toHaveAttribute('href', '/users/create');
       });
     });
   });

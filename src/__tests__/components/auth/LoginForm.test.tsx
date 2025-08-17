@@ -19,7 +19,7 @@ describe('LoginForm', () => {
   });
 
   describe('Database Configuration', () => {
-    it('shows database configuration warning when DATABASE_URL is not set', () => {
+    it('shows database configuration warning when DB_CONFIGURED is not set', () => {
       delete process.env.NEXT_PUBLIC_DB_CONFIGURED;
       
       render(<LoginForm />);

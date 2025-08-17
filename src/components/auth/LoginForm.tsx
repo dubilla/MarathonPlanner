@@ -10,7 +10,6 @@ export default function LoginForm() {
   const [message, setMessage] = useState("");
   const [authMode, setAuthMode] = useState<"password" | "magic-link">("password");
 
-  // Check if database is configured
   const isDatabaseConfigured = process.env.NEXT_PUBLIC_DB_CONFIGURED;
 
   if (!isDatabaseConfigured) {

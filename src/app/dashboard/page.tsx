@@ -37,7 +37,7 @@ function DashboardContent() {
                   📅 View Training Plans
                 </Link>
                 <Link
-                  href="/training-plans/new"
+                  href="/plans/new"
                   className="block p-3 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
                   ➕ Create New Plan
@@ -86,7 +86,7 @@ function DashboardContent() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">My Training Plans</h2>
                 <Link
-                  href="/training-plans/new"
+                  href="/plans/new"
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Create Plan
@@ -101,7 +101,7 @@ function DashboardContent() {
                   Get started by creating your first marathon training plan.
                 </p>
                 <Link
-                  href="/training-plans/new"
+                  href="/plans/new"
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                 >
                   Create Your First Plan

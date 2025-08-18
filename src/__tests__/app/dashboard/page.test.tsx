@@ -86,7 +86,7 @@ describe('Dashboard Page', () => {
       render(<DashboardPage />);
       
       expect(screen.getByRole('link', { name: '📅 View Training Plans' })).toHaveAttribute('href', '/training-plans');
-      expect(screen.getByRole('link', { name: '➕ Create New Plan' })).toHaveAttribute('href', '/training-plans/new');
+      expect(screen.getByRole('link', { name: '➕ Create New Plan' })).toHaveAttribute('href', '/plans/new');
       expect(screen.getByRole('link', { name: '🏃‍♂️ Log Workout' })).toHaveAttribute('href', '/workouts');
       expect(screen.getByRole('link', { name: '📊 View Analytics' })).toHaveAttribute('href', '/analytics');
     });
@@ -141,7 +141,7 @@ describe('Dashboard Page', () => {
       // Check that they all link to the same place
       createPlanButtons.forEach(button => {
         const link = button.closest('a');
-        expect(link).toHaveAttribute('href', '/training-plans/new');
+        expect(link).toHaveAttribute('href', '/plans/new');
       });
     });
   });

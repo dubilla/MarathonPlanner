@@ -1,0 +1,171 @@
+"use client";
+
+import { PlanWithRelations } from '@/services/PlanCreationService';
+
+interface PlanPreviewProps {
+  plan: PlanWithRelations;
+  onCreate: () => void;
+  onTryAgain: () => void;
+  isCreating?: boolean;
+}
+
+const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = false }: PlanPreviewProps) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const getWeekSummary = (week: typeof plan.weeks[0]) => {
+    const totalMiles = week.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
+    const longRunDay = week.trainingDays.find(day => day.dayOfWeek === 6);
+    const longRunMiles = longRunDay ? Number(longRunDay.miles) : 0;
+    
+    let label = '';
+    if (week.weekNumber === 16) {
+      label = ' (Peak)';
+    } else if (week.weekNumber >= 17) {
+      label = ' (Taper)';
+    }
+    
+    return {
+      totalMiles,
+      longRunMiles,
+      label
+    };
+  };
+
+  // Show first few weeks, peak week, and taper weeks
+  const keyWeeks = plan.weeks.filter(week => 
+    week.weekNumber <= 3 || week.weekNumber >= 16
+  );
+
+  const sampleWeek = plan.weeks.find(week => week.trainingDays?.length > 0) || plan.weeks[0];
+
+  return (
+    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+      {/* Header */}
+      <div className="border-b border-gray-200 p-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Training Plan Preview</h1>
+        <h2 className="text-xl font-semibold text-gray-700">{plan.name}</h2>
+        <p className="text-gray-600 mt-1">{plan.description}</p>
+      </div>
+
+      {/* Plan Overview */}
+      <div className="p-6 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Overview</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <span className="font-medium text-gray-700">Marathon Date:</span>
+            <span className="ml-2 text-gray-900">{formatDate(plan.marathonDate)}</span>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700">Total Weeks:</span>
+            <span className="ml-2 text-gray-900">{plan.totalWeeks} weeks</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan Requirements */}
+      <div className="p-6 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Features</h3>
+        <div className="grid md:grid-cols-2 gap-3 text-sm">
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>18 weeks total</span>
+          </div>
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>6 running days per week</span>
+          </div>
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>1 rest day per week (Sunday)</span>
+          </div>
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>Tuesday and Thursday workouts</span>
+          </div>
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>Saturday long runs</span>
+          </div>
+          <div className="flex items-center text-green-700">
+            <span className="mr-2">✓</span>
+            <span>Last 2 weeks are taper</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Progression */}
+      <div className="p-6 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progression</h3>
+        <div className="space-y-2">
+          {keyWeeks.map(week => {
+            const summary = getWeekSummary(week);
+            return (
+              <div key={week.id} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                <span className="font-medium">
+                  Week {week.weekNumber}{summary.label}:
+                </span>
+                <div className="text-right">
+                  <span className="text-gray-900">{summary.totalMiles} miles total</span>
+                  {summary.longRunMiles > 0 && (
+                    <span className="text-gray-600 text-sm ml-2">
+                      ({summary.longRunMiles} mile long run)
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sample Week Schedule */}
+      {sampleWeek && sampleWeek.trainingDays && sampleWeek.trainingDays.length > 0 && (
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sample Week Schedule (Week {sampleWeek.weekNumber})</h3>
+          <div className="grid grid-cols-7 gap-2 text-sm">
+            {sampleWeek.trainingDays.map(day => (
+              <div key={day.id} className="text-center p-3 bg-gray-50 rounded">
+                <div className="font-medium text-gray-900 mb-1">
+                  {dayNames[day.dayOfWeek]}
+                </div>
+                <div className="text-gray-600 mb-1">
+                  {Number(day.miles) === 0 ? 'Rest' : `${Number(day.miles)} miles`}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {day.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="p-6 flex flex-col sm:flex-row gap-3 justify-end">
+        <button
+          onClick={onTryAgain}
+          disabled={isCreating}
+          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Try Again
+        </button>
+        <button
+          onClick={onCreate}
+          disabled={isCreating}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md transition-colors"
+        >
+          {isCreating ? 'Creating...' : 'Create Plan'}
+        </button>
+      </div>
+    </div>
+  );
+}

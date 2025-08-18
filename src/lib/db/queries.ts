@@ -4,11 +4,12 @@ import {
   nextAuthUsers,
   trainingPlans,
   trainingWeeks,
-  workouts,
+  trainingDays,
   type NewTrainingPlan,
   type NewTrainingWeek,
-  type NewWorkout,
+  type NewTrainingDay,
 } from "./schema";
+import { PlanWithRelations } from "@/services/PlanCreationService";
 
 // User queries
 export const getUserByEmail = async (email: string) => {
@@ -57,41 +58,21 @@ export const createTrainingWeek = async (data: NewTrainingWeek) => {
   return result[0];
 };
 
-// Workout queries
-export const getWorkoutsByWeekId = async (weekId: string) => {
+// Training day queries
+export const getTrainingDaysByWeekId = async (weekId: string) => {
   return await db
     .select()
-    .from(workouts)
-    .where(eq(workouts.weekId, weekId))
-    .orderBy(workouts.dayOfWeek);
+    .from(trainingDays)
+    .where(eq(trainingDays.weekId, weekId))
+    .orderBy(trainingDays.dayOfWeek);
 };
 
-export const createWorkout = async (data: NewWorkout) => {
-  const result = await db.insert(workouts).values(data).returning();
+export const createTrainingDay = async (data: NewTrainingDay) => {
+  const result = await db.insert(trainingDays).values(data).returning();
   return result[0];
 };
 
-export const updateWorkoutCompletion = async (
-  id: string,
-  completed: boolean,
-  actualDistance?: number,
-  actualNotes?: string
-) => {
-  const result = await db
-    .update(workouts)
-    .set({
-      completed,
-      actualDistance: actualDistance?.toString(),
-      actualNotes,
-      completedAt: completed ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(workouts.id, id))
-    .returning();
-  return result[0];
-};
-
-// Get full training plan with weeks and workouts
+// Get full training plan with weeks and training days
 export const getFullTrainingPlan = async (id: string) => {
   const plan = await db.query.trainingPlans.findFirst({
     where: eq(trainingPlans.id, id),
@@ -99,14 +80,56 @@ export const getFullTrainingPlan = async (id: string) => {
       weeks: {
         orderBy: trainingWeeks.weekNumber,
         with: {
-          workouts: {
-            orderBy: workouts.dayOfWeek,
+          trainingDays: {
+            orderBy: trainingDays.dayOfWeek,
           },
         },
       },
     },
   });
   return plan;
+};
+
+// Save a complete training plan with all weeks and days
+export const savePlan = async (plan: PlanWithRelations) => {
+  return await db.transaction(async (tx) => {
+    // Save the main plan
+    const savedPlan = await tx.insert(trainingPlans).values({
+      id: plan.id,
+      userId: plan.userId,
+      name: plan.name,
+      description: plan.description,
+      marathonDate: plan.marathonDate,
+      goalTime: plan.goalTime,
+      totalWeeks: plan.totalWeeks,
+    }).returning();
+
+    // Save all weeks
+    for (const week of plan.weeks) {
+      await tx.insert(trainingWeeks).values({
+        id: week.id,
+        planId: savedPlan[0].id,
+        weekNumber: week.weekNumber,
+        startDate: week.startDate,
+        targetMileage: week.targetMileage,
+        actualMileage: week.actualMileage,
+        notes: week.notes,
+      });
+
+      // Save all training days for this week
+      for (const day of week.trainingDays) {
+        await tx.insert(trainingDays).values({
+          id: day.id,
+          weekId: week.id,
+          dayOfWeek: day.dayOfWeek,
+          miles: day.miles,
+          description: day.description,
+        });
+      }
+    }
+
+    return savedPlan[0];
+  });
 };
 
 // Get all public training plans (for community features)

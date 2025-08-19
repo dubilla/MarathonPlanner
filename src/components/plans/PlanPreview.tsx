@@ -40,10 +40,8 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
     };
   };
 
-  // Show first few weeks, peak week, and taper weeks
-  const keyWeeks = plan.weeks.filter(week => 
-    week.weekNumber <= 3 || week.weekNumber >= 16
-  );
+  // Show all 18 weeks
+  const keyWeeks = plan.weeks;
 
   const sampleWeek = plan.weeks.find(week => week.trainingDays?.length > 0) || plan.weeks[0];
 

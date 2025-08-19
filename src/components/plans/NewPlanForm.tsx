@@ -34,14 +34,6 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
     }
 
     const marathonDate = new Date(formData.marathonDate);
-    const today = new Date();
-    const eighteenWeeksFromNow = new Date(today);
-    eighteenWeeksFromNow.setDate(eighteenWeeksFromNow.getDate() + (18 * 7));
-
-    if (marathonDate < eighteenWeeksFromNow) {
-      setError('Marathon date must be at least 18 weeks in the future.');
-      return;
-    }
 
     if (!onSubmit) {
       return;

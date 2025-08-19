@@ -198,7 +198,7 @@ describe('NewPlanForm', () => {
       expect(screen.getByText('Creating your training plan...')).toBeInTheDocument();
     });
 
-    it('validates marathon date is in the future', async () => {
+    it('allows marathon date in the past to create plan with historical training days', async () => {
       const userSetup = userEvent.setup();
       const mockOnSubmit = jest.fn();
       
@@ -213,15 +213,19 @@ describe('NewPlanForm', () => {
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayString = yesterday.toISOString().split('T')[0];
       
+      await userSetup.clear(marathonDateInput);
       await userSetup.type(marathonDateInput, yesterdayString);
+      await userSetup.clear(peakMileageInput);
       await userSetup.type(peakMileageInput, '50');
       await userSetup.click(submitButton);
       
       await waitFor(() => {
-        expect(screen.getByText('Marathon date must be at least 18 weeks in the future.')).toBeInTheDocument();
+        expect(mockOnSubmit).toHaveBeenCalledWith({
+          marathonDate: new Date(yesterdayString),
+          longestWeeklyMileage: 50,
+          userId: 'user-123'
+        });
       });
-      
-      expect(mockOnSubmit).not.toHaveBeenCalled();
     });
 
     it('validates peak weekly mileage is within reasonable range', () => {

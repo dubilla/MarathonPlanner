@@ -187,6 +187,11 @@ export class PlanCreationService {
   }
 
   private calculateLongRunMiles(weekNumber: number, peakWeeklyMileage: number): number {
+    // Special case for peak week (Week 16) - set specific long run distance
+    if (weekNumber === 16) {
+      return peakWeeklyMileage >= 60 ? 22 : 20;
+    }
+    
     // The long run should be about 30-40% of weekly mileage
     const weeklyMileage = this.calculateWeeklyMileage(weekNumber, peakWeeklyMileage);
     

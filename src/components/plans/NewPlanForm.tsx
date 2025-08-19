@@ -12,7 +12,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
   const { user, loading } = useAuth();
   const [formData, setFormData] = useState({
     marathonDate: '',
-    longestRunMiles: ''
+    longestWeeklyMileage: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
     e.preventDefault();
     setError(null);
     
-    if (!formData.marathonDate || !formData.longestRunMiles) {
+    if (!formData.marathonDate || !formData.longestWeeklyMileage) {
       return;
     }
 
@@ -52,7 +52,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
     try {
       await onSubmit({
         marathonDate,
-        longestRunMiles: parseInt(formData.longestRunMiles),
+        longestWeeklyMileage: parseInt(formData.longestWeeklyMileage),
         userId: user.id
       });
     } catch {
@@ -98,21 +98,24 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
         </div>
 
         <div>
-          <label htmlFor="longestRunMiles" className="block text-sm font-medium text-gray-700 mb-1">
-            Longest Run Distance (miles)
+          <label htmlFor="longestWeeklyMileage" className="block text-sm font-medium text-gray-700 mb-1">
+            Peak Weekly Mileage (miles)
           </label>
           <input
             type="number"
-            id="longestRunMiles"
-            name="longestRunMiles"
-            value={formData.longestRunMiles}
+            id="longestWeeklyMileage"
+            name="longestWeeklyMileage"
+            value={formData.longestWeeklyMileage}
             onChange={handleChange}
-            min="1"
-            max="30"
+            min="20"
+            max="100"
             required
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g., 20"
+            placeholder="e.g., 50"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            This will be your highest mileage week (Week 16) before tapering.
+          </p>
         </div>
 
         {error && (

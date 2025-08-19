@@ -81,7 +81,7 @@ describe('PlansNewPage', () => {
       
       expect(screen.getByText('Create New Training Plan')).toBeInTheDocument();
       expect(screen.getByLabelText('Marathon Date')).toBeInTheDocument();
-      expect(screen.getByLabelText('Longest Run Distance (miles)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Peak Weekly Mileage (miles)')).toBeInTheDocument();
     });
 
     it('uses protected route', () => {
@@ -113,7 +113,7 @@ describe('PlansNewPage', () => {
       render(<PlansNewPage />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Use a date far enough in the future
@@ -122,7 +122,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {
@@ -131,7 +131,7 @@ describe('PlansNewPage', () => {
       
       expect(mockCreatePlan).toHaveBeenCalledWith({
         marathonDate: new Date(futureDateString),
-        longestRunMiles: 20,
+        longestWeeklyMileage: 50,
         userId: 'user-123'
       });
     });
@@ -144,7 +144,7 @@ describe('PlansNewPage', () => {
       render(<PlansNewPage />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       const futureDate = new Date();
@@ -152,7 +152,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       expect(screen.getByText('Creating your training plan...')).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('PlansNewPage', () => {
       render(<PlansNewPage />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       const futureDate = new Date();
@@ -174,7 +174,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {
@@ -198,7 +198,7 @@ describe('PlansNewPage', () => {
       
       // Fill and submit form
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       const futureDate = new Date();
@@ -206,7 +206,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {
@@ -232,7 +232,7 @@ describe('PlansNewPage', () => {
       
       // Fill and submit form
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       const futureDate = new Date();
@@ -240,7 +240,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {
@@ -267,7 +267,7 @@ describe('PlansNewPage', () => {
       
       // Fill and submit form to get to preview
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       const futureDate = new Date();
@@ -275,7 +275,7 @@ describe('PlansNewPage', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {

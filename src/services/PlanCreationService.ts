@@ -2,7 +2,7 @@ import { TrainingPlan, TrainingWeek, TrainingDay } from "@/lib/db/schema";
 
 export interface CreateMarathonPlanInput {
   marathonDate: Date;
-  longestRunMiles: number;
+  longestWeeklyMileage: number;
   userId: string;
 }
 
@@ -14,14 +14,14 @@ export type PlanWithRelations = TrainingPlan & {
 
 export class PlanCreationService {
   async createMarathonPlan(input: CreateMarathonPlanInput): Promise<PlanWithRelations> {
-    const { marathonDate, longestRunMiles, userId } = input;
+    const { marathonDate, longestWeeklyMileage, userId } = input;
     
-    const plan = this.generatePlan(marathonDate, longestRunMiles, userId);
+    const plan = this.generatePlan(marathonDate, longestWeeklyMileage, userId);
     
     return plan;
   }
 
-  private generatePlan(marathonDate: Date, longestRunMiles: number, userId: string): PlanWithRelations {
+  private generatePlan(marathonDate: Date, peakWeeklyMileage: number, userId: string): PlanWithRelations {
     const totalWeeks = 18;
     
     const planStartDate = new Date(marathonDate);
@@ -44,7 +44,7 @@ export class PlanCreationService {
       const weekStartDate = new Date(planStartDate);
       weekStartDate.setDate(weekStartDate.getDate() + (weekNum - 1) * 7);
 
-      const week = this.generateWeek(weekNum, weekStartDate, longestRunMiles, plan.id);
+      const week = this.generateWeek(weekNum, weekStartDate, peakWeeklyMileage, plan.id);
       plan.weeks.push(week);
     }
 
@@ -54,26 +54,12 @@ export class PlanCreationService {
   private generateWeek(
     weekNumber: number, 
     startDate: Date, 
-    longestRunMiles: number, 
+    peakWeeklyMileage: number, 
     planId: string
   ): TrainingWeek & { trainingDays: TrainingDay[] } {
-    const isWeek17 = weekNumber === 17;
-    const isWeek18 = weekNumber === 18;
-    
-    let weeklyMileage: number;
-    let longRunMiles: number;
-
-    if (isWeek18) {
-      weeklyMileage = this.calculateWeek18Mileage(longestRunMiles);
-      longRunMiles = this.calculateLongRunMiles(weekNumber, longestRunMiles);
-    } else if (isWeek17) {
-      const week16Mileage = this.calculateWeeklyMileage(16, longestRunMiles);
-      weeklyMileage = week16Mileage * 0.8;
-      longRunMiles = this.calculateLongRunMiles(weekNumber, longestRunMiles);
-    } else {
-      weeklyMileage = this.calculateWeeklyMileage(weekNumber, longestRunMiles);
-      longRunMiles = this.calculateLongRunMiles(weekNumber, longestRunMiles);
-    }
+    // Calculate weekly mileage with Week 16 as peak
+    const weeklyMileage = this.calculateWeeklyMileage(weekNumber, peakWeeklyMileage);
+    const longRunMiles = this.calculateLongRunMiles(weekNumber, peakWeeklyMileage);
 
     const week: TrainingWeek & { trainingDays: TrainingDay[] } = {
       id: crypto.randomUUID(),
@@ -96,7 +82,8 @@ export class PlanCreationService {
         dayOfWeek, 
         dailyMiles, 
         longRunMiles, 
-        week.id
+        week.id,
+        startDate
       );
       week.trainingDays.push(trainingDay);
     }
@@ -108,7 +95,8 @@ export class PlanCreationService {
     dayOfWeek: number, 
     dailyMiles: number, 
     longRunMiles: number, 
-    weekId: string
+    weekId: string,
+    weekStartDate: Date
   ): TrainingDay {
     let miles: number;
     let description: string;
@@ -147,6 +135,10 @@ export class PlanCreationService {
         description = "Rest";
     }
 
+    // Calculate the date for this specific day
+    const dayDate = new Date(weekStartDate);
+    dayDate.setDate(dayDate.getDate() + (dayOfWeek - 1));
+
     return {
       id: crypto.randomUUID(),
       weekId,
@@ -158,51 +150,57 @@ export class PlanCreationService {
     };
   }
 
-  private calculateWeeklyMileage(weekNumber: number, longestRunMiles: number): number {
-    const baseWeeklyMileage = longestRunMiles * 2.5;
-    
-    if (weekNumber <= 4) {
-      return baseWeeklyMileage * 0.6 + (weekNumber - 1) * (baseWeeklyMileage * 0.1);
-    } else if (weekNumber <= 8) {
-      return baseWeeklyMileage * 0.7 + (weekNumber - 5) * (baseWeeklyMileage * 0.05);
-    } else if (weekNumber <= 12) {
-      return baseWeeklyMileage * 0.8 + (weekNumber - 9) * (baseWeeklyMileage * 0.03);
-    } else if (weekNumber <= 16) {
-      return baseWeeklyMileage * 0.9 + (weekNumber - 13) * (baseWeeklyMileage * 0.025);
-    }
-    
-    return baseWeeklyMileage;
-  }
-
-  private calculateWeek18Mileage(longestRunMiles: number): number {
-    const week16Mileage = this.calculateWeeklyMileage(16, longestRunMiles);
-    return week16Mileage * 0.2;
-  }
-
-  private calculateLongRunMiles(weekNumber: number, longestRunMiles: number): number {
+  private calculateWeeklyMileage(weekNumber: number, peakWeeklyMileage: number): number {
+    // Week 16 is the peak week
     if (weekNumber === 16) {
-      return longestRunMiles;
+      return peakWeeklyMileage;
     }
     
+    // Taper weeks (17 and 18)
     if (weekNumber === 17) {
-      return longestRunMiles * 0.65;
+      return peakWeeklyMileage * 0.75; // 75% of peak
     }
     
     if (weekNumber === 18) {
-      return longestRunMiles * 0.3;
+      return peakWeeklyMileage * 0.4; // 40% of peak (marathon week)
     }
     
-    if (weekNumber <= 4) {
-      return 8 + (weekNumber - 1) * 2;
-    } else if (weekNumber <= 8) {
-      return 14 + (weekNumber - 5) * 1;
-    } else if (weekNumber <= 12) {
-      return 18 + (weekNumber - 9) * 0.5;
-    } else if (weekNumber <= 15) {
-      const progressToLongest = (weekNumber - 13) / 3;
-      return 20 + progressToLongest * (longestRunMiles - 20);
+    // Build-up weeks (1-15) with oscillating pattern
+    // Start at 50% of peak, build to 100% by week 16
+    const buildWeeks = 15;
+    const progress = (weekNumber - 1) / buildWeeks; // 0 to 1
+    
+    // Base progression from 50% to 95% (we'll reach 100% in week 16)
+    const baseProgress = 0.5 + (progress * 0.45);
+    
+    // Add oscillation: every 3 weeks, dip down slightly
+    let oscillation = 0;
+    const cyclePosition = (weekNumber - 1) % 3;
+    if (cyclePosition === 2) { // Every 3rd week (weeks 3, 6, 9, 12, 15)
+      oscillation = -0.1; // Dip 10% for recovery
+    } else if (cyclePosition === 1) { // Week after recovery
+      oscillation = 0.05; // Slight boost
     }
     
-    return longestRunMiles;
+    const finalProgress = Math.max(0.5, Math.min(0.95, baseProgress + oscillation));
+    return Math.round(peakWeeklyMileage * finalProgress);
+  }
+
+  private calculateLongRunMiles(weekNumber: number, peakWeeklyMileage: number): number {
+    // The long run should be about 30-40% of weekly mileage
+    const weeklyMileage = this.calculateWeeklyMileage(weekNumber, peakWeeklyMileage);
+    
+    // Special cases for taper weeks
+    if (weekNumber === 17) {
+      return Math.round(weeklyMileage * 0.35); // Conservative long run during taper
+    }
+    
+    if (weekNumber === 18) {
+      return Math.round(weeklyMileage * 0.25); // Very short run during marathon week
+    }
+    
+    // For build-up weeks, long run is 35-40% of weekly mileage
+    const longRunPercentage = 0.35 + (weekNumber / 16) * 0.05; // Gradually increase from 35% to 40%
+    return Math.round(weeklyMileage * longRunPercentage);
   }
 }

@@ -33,7 +33,7 @@ describe('NewPlanForm', () => {
       
       expect(screen.getByText('Create Marathon Training Plan')).toBeInTheDocument();
       expect(screen.getByLabelText('Marathon Date')).toBeInTheDocument();
-      expect(screen.getByLabelText('Longest Run Distance (miles)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Peak Weekly Mileage (miles)')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Create Plan' })).toBeInTheDocument();
     });
 
@@ -41,13 +41,13 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date') as HTMLInputElement;
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)') as HTMLInputElement;
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)') as HTMLInputElement;
       
       expect(marathonDateInput.required).toBe(true);
-      expect(longestRunInput.required).toBe(true);
-      expect(longestRunInput.type).toBe('number');
-      expect(longestRunInput.min).toBe('1');
-      expect(longestRunInput.max).toBe('30');
+      expect(peakMileageInput.required).toBe(true);
+      expect(peakMileageInput.type).toBe('number');
+      expect(peakMileageInput.min).toBe('20');
+      expect(peakMileageInput.max).toBe('100');
     });
 
     it('shows form description', () => {
@@ -69,14 +69,14 @@ describe('NewPlanForm', () => {
       expect(marathonDateInput.value).toBe('2024-10-15');
     });
 
-    it('updates longest run input value on change', async () => {
+    it('updates peak mileage input value on change', async () => {
       const user = userEvent.setup();
       render(<NewPlanForm />);
       
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)') as HTMLInputElement;
-      await user.type(longestRunInput, '20');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)') as HTMLInputElement;
+      await user.type(peakMileageInput, '50');
       
-      expect(longestRunInput.value).toBe('20');
+      expect(peakMileageInput.value).toBe('50');
     });
 
     it('requires both fields to be filled before submitting', async () => {
@@ -97,7 +97,7 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm onSubmit={mockOnSubmit} />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Use a date that's definitely 18+ weeks in the future
@@ -106,7 +106,7 @@ describe('NewPlanForm', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       expect(screen.getByText('Creating your training plan...')).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm onSubmit={mockOnSubmit} />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Use a date that's definitely 18+ weeks in the future
@@ -129,12 +129,12 @@ describe('NewPlanForm', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       expect(mockOnSubmit).toHaveBeenCalledWith({
         marathonDate: new Date(futureDateString),
-        longestRunMiles: 20,
+        longestWeeklyMileage: 50,
         userId: 'user-123'
       });
     });
@@ -148,7 +148,7 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm onSubmit={mockOnSubmit} />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Use a date that's definitely 18+ weeks in the future
@@ -157,7 +157,7 @@ describe('NewPlanForm', () => {
       const futureDateString = futureDate.toISOString().split('T')[0];
       
       await user.type(marathonDateInput, futureDateString);
-      await user.type(longestRunInput, '20');
+      await user.type(peakMileageInput, '50');
       await user.click(submitButton);
       
       await waitFor(() => {
@@ -174,7 +174,7 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm onSubmit={mockOnSubmit} />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Use a date that's definitely 18+ weeks in the future
@@ -184,7 +184,7 @@ describe('NewPlanForm', () => {
       
       // First submission - should fail
       await userEvent_setup.type(marathonDateInput, futureDateString);
-      await userEvent_setup.type(longestRunInput, '20');
+      await userEvent_setup.type(peakMileageInput, '50');
       await userEvent_setup.click(submitButton);
       
       await waitFor(() => {
@@ -205,7 +205,7 @@ describe('NewPlanForm', () => {
       render(<NewPlanForm onSubmit={mockOnSubmit} />);
       
       const marathonDateInput = screen.getByLabelText('Marathon Date');
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)');
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)');
       const submitButton = screen.getByRole('button', { name: 'Create Plan' });
       
       // Set date to yesterday
@@ -214,7 +214,7 @@ describe('NewPlanForm', () => {
       const yesterdayString = yesterday.toISOString().split('T')[0];
       
       await userSetup.type(marathonDateInput, yesterdayString);
-      await userSetup.type(longestRunInput, '20');
+      await userSetup.type(peakMileageInput, '50');
       await userSetup.click(submitButton);
       
       await waitFor(() => {
@@ -224,14 +224,14 @@ describe('NewPlanForm', () => {
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
 
-    it('validates longest run is within reasonable range', () => {
+    it('validates peak weekly mileage is within reasonable range', () => {
       render(<NewPlanForm />);
       
-      const longestRunInput = screen.getByLabelText('Longest Run Distance (miles)') as HTMLInputElement;
+      const peakMileageInput = screen.getByLabelText('Peak Weekly Mileage (miles)') as HTMLInputElement;
       
-      // HTML5 validation should prevent values outside 1-30 range
-      expect(longestRunInput.min).toBe('1');
-      expect(longestRunInput.max).toBe('30');
+      // HTML5 validation should prevent values outside 20-100 range
+      expect(peakMileageInput.min).toBe('20');
+      expect(peakMileageInput.max).toBe('100');
     });
   });
 

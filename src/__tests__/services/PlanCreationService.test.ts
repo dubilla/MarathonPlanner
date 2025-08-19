@@ -10,12 +10,12 @@ describe("PlanCreationService", () => {
   describe("createMarathonPlan", () => {
     it("should create an 18-week training plan", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -26,12 +26,12 @@ describe("PlanCreationService", () => {
 
     it("should schedule the longest run on Saturday of Week 16", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -40,17 +40,24 @@ describe("PlanCreationService", () => {
       
       const saturday = week16!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
-      expect(Number(saturday!.miles)).toBe(longestRunMiles);
+      expect(saturday!.description).toBe("Long Run");
+      
+      // Week 16 should have the peak weekly mileage
+      expect(Number(week16!.targetMileage)).toBe(longestWeeklyMileage);
+      
+      // Long run should be about 35-40% of weekly mileage
+      const expectedLongRun = Math.round(longestWeeklyMileage * 0.39); // Approximately 40% for week 16
+      expect(Number(saturday!.miles)).toBeCloseTo(expectedLongRun, 0);
     });
 
     it("should create 6 running days and 1 rest day per week", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -68,12 +75,12 @@ describe("PlanCreationService", () => {
 
     it("should mark Tuesdays and Thursdays as Workout days", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -90,12 +97,12 @@ describe("PlanCreationService", () => {
 
     it("should mark Saturdays as Long Run days", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -108,12 +115,12 @@ describe("PlanCreationService", () => {
 
     it("should create taper weeks with reduced mileage", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -129,18 +136,18 @@ describe("PlanCreationService", () => {
       const week17TotalMiles = week17!.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
       const week18TotalMiles = week18!.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
 
-      expect(week17TotalMiles).toBeCloseTo(week16TotalMiles * 0.8, 1);
-      expect(week18TotalMiles).toBeCloseTo(week16TotalMiles * 0.2, 1);
+      expect(week17TotalMiles).toBeCloseTo(week16TotalMiles * 0.75, 1);
+      expect(week18TotalMiles).toBeCloseTo(week16TotalMiles * 0.4, 1);
     });
 
-    it("should gradually build up mileage over the weeks", async () => {
+    it("should build up mileage with oscillating pattern to peak at Week 16", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -148,24 +155,30 @@ describe("PlanCreationService", () => {
         week.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0)
       );
 
-      for (let i = 1; i < weeklyMileage.length - 4; i++) {
-        const currentWeek = weeklyMileage[i];
-        const previousWeek = weeklyMileage[i - 1];
-        
-        if (i % 4 !== 0) {
-          expect(currentWeek).toBeGreaterThanOrEqual(previousWeek * 0.85);
-        }
-      }
+      // Week 16 should be the peak
+      expect(weeklyMileage[15]).toBe(longestWeeklyMileage); // Week 16 (index 15)
+      
+      // First week should be about 50% of peak
+      expect(weeklyMileage[0]).toBeGreaterThanOrEqual(longestWeeklyMileage * 0.45);
+      expect(weeklyMileage[0]).toBeLessThanOrEqual(longestWeeklyMileage * 0.55);
+      
+      // Should have general upward trend despite oscillation
+      const firstHalf = weeklyMileage.slice(0, 8);
+      const secondHalf = weeklyMileage.slice(8, 16);
+      const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+      
+      expect(secondHalfAvg).toBeGreaterThan(firstHalfAvg);
     });
 
-    it("should gradually build up long run distance", async () => {
+    it("should build up long run distance proportionally to weekly mileage", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 
@@ -174,24 +187,28 @@ describe("PlanCreationService", () => {
         return Number(saturday!.miles);
       });
 
-      for (let i = 1; i < longRunMiles.length - 3; i++) {
-        const currentLongRun = longRunMiles[i];
-        const previousLongRun = longRunMiles[i - 1];
-        
-        expect(currentLongRun).toBeGreaterThanOrEqual(previousLongRun * 0.9);
-      }
-
-      expect(Math.max(...longRunMiles)).toBe(longestRunMiles);
+      // Long runs should generally increase (allowing for some oscillation)
+      const firstHalf = longRunMiles.slice(0, 8);
+      const secondHalf = longRunMiles.slice(8, 16);
+      const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+      
+      expect(secondHalfAvg).toBeGreaterThan(firstHalfAvg);
+      
+      // Peak long run should be about 35-40% of peak weekly mileage
+      const peakLongRun = Math.max(...longRunMiles);
+      expect(peakLongRun).toBeGreaterThanOrEqual(longestWeeklyMileage * 0.35);
+      expect(peakLongRun).toBeLessThanOrEqual(longestWeeklyMileage * 0.45);
     });
 
     it("should calculate correct start date based on marathon date", async () => {
       const marathonDate = new Date("2024-10-15");
-      const longestRunMiles = 20;
+      const longestWeeklyMileage = 50;
       const userId = "user-123";
 
       const plan = await service.createMarathonPlan({
         marathonDate,
-        longestRunMiles,
+        longestWeeklyMileage,
         userId,
       });
 

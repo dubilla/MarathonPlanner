@@ -158,24 +158,41 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
             </div>
           )}
 
-          {activeTab === 'schedule' && sampleWeek && sampleWeek.trainingDays && sampleWeek.trainingDays.length > 0 && (
-            <div>
-              <p className="text-sm text-gray-600 mb-4">Sample Week Schedule (Week {sampleWeek.weekNumber})</p>
-              <div className="grid grid-cols-7 gap-2 text-sm">
-                {sampleWeek.trainingDays.map(day => (
-                  <div key={day.id} className="text-center p-3 bg-gray-50 rounded">
-                    <div className="font-medium text-gray-900 mb-1">
-                      {dayNames[day.dayOfWeek]}
+          {activeTab === 'schedule' && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-600 mb-4">Complete 18-Week Daily Schedule</p>
+              {plan.weeks.map(week => {
+                const summary = getWeekSummary(week);
+                return (
+                  <div key={week.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-semibold text-gray-900">
+                        Week {week.weekNumber}
+                        {week.weekNumber === 16 && ' (Peak)'}
+                        {week.weekNumber >= 17 && ' (Taper)'}
+                      </h4>
+                      <span className="text-gray-600 text-sm font-medium">
+                        {summary.totalMiles} miles total
+                      </span>
                     </div>
-                    <div className="text-gray-600 mb-1">
-                      {Number(day.miles) === 0 ? 'Rest' : `${Number(day.miles)} miles`}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {day.description}
+                    <div className="grid grid-cols-7 gap-2 text-sm">
+                      {week.trainingDays.map(day => (
+                        <div key={day.id} className="text-center p-3 bg-gray-50 rounded">
+                          <div className="font-medium text-gray-900 mb-1">
+                            {dayNames[day.dayOfWeek]}
+                          </div>
+                          <div className="text-gray-600 mb-1">
+                            {Number(day.miles) === 0 ? 'Rest' : `${Number(day.miles)} miles`}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {day.description === 'Long Run' && week.weekNumber === 18 ? 'RACE!' : day.description}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
         </div>

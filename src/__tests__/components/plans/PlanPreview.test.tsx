@@ -143,14 +143,18 @@ describe('PlanPreview', () => {
       const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
       await user.click(dailyScheduleTab);
       
-      // Check that days of the week are shown
-      expect(screen.getByText('Monday')).toBeInTheDocument();
-      expect(screen.getByText('Tuesday')).toBeInTheDocument();
-      expect(screen.getByText('Wednesday')).toBeInTheDocument();
-      expect(screen.getByText('Thursday')).toBeInTheDocument();
-      expect(screen.getByText('Friday')).toBeInTheDocument();
-      expect(screen.getByText('Saturday')).toBeInTheDocument();
-      expect(screen.getByText('Sunday')).toBeInTheDocument();
+      // Check that "Complete 18-Week Daily Schedule" text is shown
+      expect(screen.getByText('Complete 18-Week Daily Schedule')).toBeInTheDocument();
+      
+      // Check that all 18 weeks are displayed
+      expect(screen.getByText('Week 1')).toBeInTheDocument();
+      expect(screen.getByText('Week 9')).toBeInTheDocument();
+      expect(screen.getByText('Week 16 (Peak)')).toBeInTheDocument();
+      expect(screen.getByText('Week 18 (Taper)')).toBeInTheDocument();
+      
+      // Check that days of the week are shown (should be multiple of each)
+      expect(screen.getAllByText('Monday').length).toBe(18);
+      expect(screen.getAllByText('Sunday').length).toBe(18);
     });
 
     it('shows workout types correctly when Daily Schedule tab is active', async () => {
@@ -201,7 +205,8 @@ describe('PlanPreview', () => {
       await user.click(dailyScheduleTab);
       
       // Verify Daily Schedule content is now visible
-      expect(screen.getByText('Monday')).toBeInTheDocument();
+      expect(screen.getByText('Complete 18-Week Daily Schedule')).toBeInTheDocument();
+      expect(screen.getAllByText('Monday').length).toBe(18);
       
       // Click back to Weekly Progression tab
       const weeklyProgressionTab = screen.getByRole('button', { name: 'Weekly Progression' });
@@ -209,6 +214,37 @@ describe('PlanPreview', () => {
       
       // Verify Weekly Progression content is visible again
       expect(screen.getByText(/Week 1:/)).toBeInTheDocument();
+      // Verify Daily Schedule content is no longer visible
+      expect(screen.queryByText('Complete 18-Week Daily Schedule')).not.toBeInTheDocument();
+    });
+
+    it('shows "RACE!" for Week 18 long run in Daily Schedule', async () => {
+      const user = userEvent.setup();
+      render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
+      
+      // Verify Week 18 shows "RACE!" for the long run
+      expect(screen.getByText('Week 18 (Taper)')).toBeInTheDocument();
+      expect(screen.getAllByText('RACE!').length).toBeGreaterThan(0);
+    });
+
+    it('displays weekly mileage totals in Daily Schedule', async () => {
+      const user = userEvent.setup();
+      render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
+      
+      // Verify weekly totals are displayed for each week (18 in Daily Schedule + 18 in Weekly Progression that could show through)
+      expect(screen.getAllByText(/miles total/).length).toBeGreaterThanOrEqual(18);
+      
+      // Check that the first and peak week headers are present
+      expect(screen.getByText('Week 1')).toBeInTheDocument();
+      expect(screen.getByText('Week 16 (Peak)')).toBeInTheDocument();
     });
   });
 

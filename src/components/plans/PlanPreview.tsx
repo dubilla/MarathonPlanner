@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import { PlanWithRelations } from '@/services/PlanCreationService';
 
 interface PlanPreviewProps {
@@ -12,6 +13,8 @@ interface PlanPreviewProps {
 const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = false }: PlanPreviewProps) {
+  const [activeTab, setActiveTab] = useState<'progression' | 'schedule'>('progression');
+  
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -100,52 +103,83 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
         </div>
       </div>
 
-      {/* Weekly Progression */}
+      {/* Suggested Plan */}
       <div className="p-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progression</h3>
-        <div className="space-y-2">
-          {keyWeeks.map(week => {
-            const summary = getWeekSummary(week);
-            return (
-              <div key={week.id} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
-                <span className="font-medium">
-                  Week {week.weekNumber}{summary.label}:
-                </span>
-                <div className="text-right">
-                  <span className="text-gray-900">{summary.totalMiles} miles total</span>
-                  {summary.longRunMiles > 0 && (
-                    <span className="text-gray-600 text-sm ml-2">
-                      {week.weekNumber === 18 ? '(RACE!)' : `(${summary.longRunMiles} mile long run)`}
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Suggested Plan</h3>
+        
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('progression')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'progression'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Weekly Progression
+            </button>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'schedule'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Daily Schedule
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-4">
+          {activeTab === 'progression' && (
+            <div className="space-y-2">
+              {keyWeeks.map(week => {
+                const summary = getWeekSummary(week);
+                return (
+                  <div key={week.id} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                    <span className="font-medium">
+                      Week {week.weekNumber}{summary.label}:
                     </span>
-                  )}
-                </div>
+                    <div className="text-right">
+                      <span className="text-gray-900">{summary.totalMiles} miles total</span>
+                      {summary.longRunMiles > 0 && (
+                        <span className="text-gray-600 text-sm ml-2">
+                          {week.weekNumber === 18 ? '(RACE!)' : `(${summary.longRunMiles} mile long run)`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === 'schedule' && sampleWeek && sampleWeek.trainingDays && sampleWeek.trainingDays.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-600 mb-4">Sample Week Schedule (Week {sampleWeek.weekNumber})</p>
+              <div className="grid grid-cols-7 gap-2 text-sm">
+                {sampleWeek.trainingDays.map(day => (
+                  <div key={day.id} className="text-center p-3 bg-gray-50 rounded">
+                    <div className="font-medium text-gray-900 mb-1">
+                      {dayNames[day.dayOfWeek]}
+                    </div>
+                    <div className="text-gray-600 mb-1">
+                      {Number(day.miles) === 0 ? 'Rest' : `${Number(day.miles)} miles`}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {day.description}
+                    </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Sample Week Schedule */}
-      {sampleWeek && sampleWeek.trainingDays && sampleWeek.trainingDays.length > 0 && (
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sample Week Schedule (Week {sampleWeek.weekNumber})</h3>
-          <div className="grid grid-cols-7 gap-2 text-sm">
-            {sampleWeek.trainingDays.map(day => (
-              <div key={day.id} className="text-center p-3 bg-gray-50 rounded">
-                <div className="font-medium text-gray-900 mb-1">
-                  {dayNames[day.dayOfWeek]}
-                </div>
-                <div className="text-gray-600 mb-1">
-                  {Number(day.miles) === 0 ? 'Rest' : `${Number(day.miles)} miles`}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {day.description}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Action Buttons */}
       <div className="p-6 flex flex-col sm:flex-row gap-3 justify-end">

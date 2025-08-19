@@ -135,8 +135,13 @@ describe('PlanPreview', () => {
   });
 
   describe('Training Schedule', () => {
-    it('displays weekly training schedule', () => {
+    it('displays weekly training schedule when Daily Schedule tab is clicked', async () => {
+      const user = userEvent.setup();
       render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
       
       // Check that days of the week are shown
       expect(screen.getByText('Monday')).toBeInTheDocument();
@@ -148,8 +153,13 @@ describe('PlanPreview', () => {
       expect(screen.getByText('Sunday')).toBeInTheDocument();
     });
 
-    it('shows workout types correctly', () => {
+    it('shows workout types correctly when Daily Schedule tab is active', async () => {
+      const user = userEvent.setup();
       render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
       
       expect(screen.getAllByText('Easy Run').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Workout').length).toBeGreaterThan(0);
@@ -160,17 +170,45 @@ describe('PlanPreview', () => {
     it('displays mileage for each day', () => {
       render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
       
-      // Check that mileage is displayed
+      // Check that mileage is displayed in the Weekly Progression (default tab)
       expect(screen.getAllByText(/\d+ miles/).length).toBeGreaterThan(0);
       // Check weekly summary for 20 mile long run
       expect(screen.getByText('(20 mile long run)')).toBeInTheDocument();
     });
 
-    it('shows rest days with 0 miles', () => {
+    it('shows rest days with 0 miles when Daily Schedule tab is active', async () => {
+      const user = userEvent.setup();
       render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
       
       const restDays = screen.getAllByText('Rest');
       expect(restDays.length).toBeGreaterThan(0);
+    });
+
+    it('switches between Weekly Progression and Daily Schedule tabs', async () => {
+      const user = userEvent.setup();
+      render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      // Verify Weekly Progression is active by default
+      expect(screen.getByText('Suggested Plan')).toBeInTheDocument();
+      expect(screen.getByText(/Week 1:/)).toBeInTheDocument();
+      
+      // Click on Daily Schedule tab
+      const dailyScheduleTab = screen.getByRole('button', { name: 'Daily Schedule' });
+      await user.click(dailyScheduleTab);
+      
+      // Verify Daily Schedule content is now visible
+      expect(screen.getByText('Monday')).toBeInTheDocument();
+      
+      // Click back to Weekly Progression tab
+      const weeklyProgressionTab = screen.getByRole('button', { name: 'Weekly Progression' });
+      await user.click(weeklyProgressionTab);
+      
+      // Verify Weekly Progression content is visible again
+      expect(screen.getByText(/Week 1:/)).toBeInTheDocument();
     });
   });
 

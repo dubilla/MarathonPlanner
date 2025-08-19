@@ -115,7 +115,7 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
                   <span className="text-gray-900">{summary.totalMiles} miles total</span>
                   {summary.longRunMiles > 0 && (
                     <span className="text-gray-600 text-sm ml-2">
-                      ({summary.longRunMiles} mile long run)
+                      {week.weekNumber === 18 ? '(RACE!)' : `(${summary.longRunMiles} mile long run)`}
                     </span>
                   )}
                 </div>

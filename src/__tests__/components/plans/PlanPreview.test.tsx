@@ -125,6 +125,13 @@ describe('PlanPreview', () => {
       expect(screen.getByText(/Week 16.*Peak/)).toBeInTheDocument();
       expect(screen.getByText(/20 mile long run/)).toBeInTheDocument();
     });
+
+    it('shows "RACE!" for Week 18 marathon week', () => {
+      render(<PlanPreview plan={mockPlan} onCreate={mockOnCreate} onTryAgain={mockOnTryAgain} />);
+      
+      expect(screen.getByText(/Week 18.*Taper/)).toBeInTheDocument();
+      expect(screen.getByText('(RACE!)')).toBeInTheDocument();
+    });
   });
 
   describe('Training Schedule', () => {

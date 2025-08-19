@@ -197,7 +197,8 @@ export class PlanCreationService {
     
     // Special cases for taper weeks
     if (weekNumber === 17) {
-      return Math.round(weeklyMileage * 0.35); // Conservative long run during taper
+      const taperLongRun = Math.round(weeklyMileage * 0.35); // Conservative long run during taper
+      return Math.min(taperLongRun, 14); // Cap at 14 miles maximum
     }
     
     if (weekNumber === 18) {

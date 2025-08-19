@@ -274,5 +274,46 @@ describe("PlanCreationService", () => {
       expect(saturday).toBeDefined();
       expect(Number(saturday!.miles)).toBe(22);
     });
+
+    it("should limit Week 17 taper long run to maximum 14 miles", async () => {
+      const marathonDate = new Date("2024-10-15");
+      const longestWeeklyMileage = 70; // High mileage that would normally result in >14 mile taper run
+      const userId = "user-123";
+
+      const plan = await service.createMarathonPlan({
+        marathonDate,
+        longestWeeklyMileage,
+        userId,
+      });
+
+      const week17 = plan.weeks.find(week => week.weekNumber === 17);
+      expect(week17).toBeDefined();
+      
+      const saturday = week17!.trainingDays.find(day => day.dayOfWeek === 6);
+      expect(saturday).toBeDefined();
+      expect(Number(saturday!.miles)).toBeLessThanOrEqual(14);
+    });
+
+    it("should allow Week 17 taper long run under 14 miles when weekly mileage is low", async () => {
+      const marathonDate = new Date("2024-10-15");
+      const longestWeeklyMileage = 40; // Lower mileage
+      const userId = "user-123";
+
+      const plan = await service.createMarathonPlan({
+        marathonDate,
+        longestWeeklyMileage,
+        userId,
+      });
+
+      const week17 = plan.weeks.find(week => week.weekNumber === 17);
+      expect(week17).toBeDefined();
+      
+      const saturday = week17!.trainingDays.find(day => day.dayOfWeek === 6);
+      expect(saturday).toBeDefined();
+      
+      // For 40 mile peak, week 17 is 75% = 30 miles, 35% of that is ~10.5 miles
+      expect(Number(saturday!.miles)).toBeLessThan(14);
+      expect(Number(saturday!.miles)).toBeGreaterThan(8);
+    });
   });
 });

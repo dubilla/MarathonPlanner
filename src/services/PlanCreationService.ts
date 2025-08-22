@@ -143,6 +143,7 @@ export class PlanCreationService {
       id: crypto.randomUUID(),
       weekId,
       dayOfWeek,
+      date: dayDate.toISOString().split('T')[0],
       miles: miles.toFixed(2),
       description,
       createdAt: new Date(),

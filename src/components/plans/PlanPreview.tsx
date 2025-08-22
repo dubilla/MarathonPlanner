@@ -8,11 +8,12 @@ interface PlanPreviewProps {
   onCreate: () => void;
   onTryAgain: () => void;
   isCreating?: boolean;
+  createError?: string | null;
 }
 
 const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = false }: PlanPreviewProps) {
+export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = false, createError }: PlanPreviewProps) {
   const [activeTab, setActiveTab] = useState<'progression' | 'schedule'>('progression');
   
   const formatDate = (dateString: string) => {
@@ -45,8 +46,6 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
 
   // Show all 18 weeks
   const keyWeeks = plan.weeks;
-
-  const sampleWeek = plan.weeks.find(week => week.trainingDays?.length > 0) || plan.weeks[0];
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
@@ -199,21 +198,28 @@ export default function PlanPreview({ plan, onCreate, onTryAgain, isCreating = f
       </div>
 
       {/* Action Buttons */}
-      <div className="p-6 flex flex-col sm:flex-row gap-3 justify-end">
-        <button
-          onClick={onTryAgain}
-          disabled={isCreating}
-          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Try Again
-        </button>
-        <button
-          onClick={onCreate}
-          disabled={isCreating}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md transition-colors"
-        >
-          {isCreating ? 'Creating...' : 'Create Plan'}
-        </button>
+      <div className="p-6">
+        {createError && (
+          <div className="mb-4 text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-3">
+            {createError}
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row gap-3 justify-end">
+          <button
+            onClick={onTryAgain}
+            disabled={isCreating}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={onCreate}
+            disabled={isCreating}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md transition-colors"
+          >
+            {isCreating ? 'Creating...' : 'Create Plan'}
+          </button>
+        </div>
       </div>
     </div>
   );

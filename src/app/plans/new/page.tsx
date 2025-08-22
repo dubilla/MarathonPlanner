@@ -8,9 +8,8 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import NewPlanForm from '@/components/plans/NewPlanForm';
 import PlanPreview from '@/components/plans/PlanPreview';
 import { PlanCreationService, CreateMarathonPlanInput, PlanWithRelations } from '@/services/PlanCreationService';
-import { savePlan } from '@/lib/db/queries';
 
-type PageState = 'form' | 'preview' | 'success';
+type PageState = 'form' | 'preview';
 
 function PlansNewPageContent() {
   const { user } = useAuth();
@@ -18,6 +17,7 @@ function PlansNewPageContent() {
   const [pageState, setPageState] = useState<PageState>('form');
   const [generatedPlan, setGeneratedPlan] = useState<PlanWithRelations | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const planService = new PlanCreationService();
 
@@ -34,25 +34,39 @@ function PlansNewPageContent() {
   const handleTryAgain = () => {
     setPageState('form');
     setGeneratedPlan(null);
+    setCreateError(null);
   };
 
   const handleCreatePlan = async () => {
     if (!generatedPlan || !user) return;
 
     setIsCreating(true);
+    setCreateError(null);
     try {
-      await savePlan(generatedPlan);
-      setPageState('success');
+      const response = await fetch('/api/plans/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(generatedPlan),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save plan');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        router.push(`/plans/${generatedPlan.id}`);
+      } else {
+        throw new Error(data.error || 'Failed to save plan');
+      }
     } catch (error) {
       console.error('Failed to save plan:', error);
-      // Handle save error - could show an error message
+      setCreateError('Failed to save training plan. Please try again.');
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const handleBackToDashboard = () => {
-    router.push('/dashboard');
   };
 
   return (
@@ -88,27 +102,11 @@ function PlansNewPageContent() {
             onCreate={handleCreatePlan}
             onTryAgain={handleTryAgain}
             isCreating={isCreating}
+            createError={createError}
           />
         </div>
       )}
 
-      {pageState === 'success' && (
-        <div className="max-w-md mx-auto text-center bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <div className="text-green-600 text-6xl mb-4">✓</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Plan created successfully!
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Your marathon training plan has been saved to your account.
-          </p>
-          <button
-            onClick={handleBackToDashboard}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      )}
     </div>
   );
 }

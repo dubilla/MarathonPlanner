@@ -90,7 +90,6 @@ export const getFullTrainingPlan = async (id: string) => {
   return plan;
 };
 
-// Save a complete training plan with all weeks and days
 export const savePlan = async (plan: PlanWithRelations) => {
   return await db.transaction(async (tx) => {
     // Save the main plan
@@ -104,28 +103,37 @@ export const savePlan = async (plan: PlanWithRelations) => {
       totalWeeks: plan.totalWeeks,
     }).returning();
 
-    // Save all weeks
-    for (const week of plan.weeks) {
-      await tx.insert(trainingWeeks).values({
-        id: week.id,
-        planId: savedPlan[0].id,
-        weekNumber: week.weekNumber,
-        startDate: week.startDate,
-        targetMileage: week.targetMileage,
-        actualMileage: week.actualMileage,
-        notes: week.notes,
-      });
+    // Prepare all weeks data for batch insert
+    const weeksData = plan.weeks.map(week => ({
+      id: week.id,
+      planId: plan.id,
+      weekNumber: week.weekNumber,
+      startDate: week.startDate,
+      targetMileage: week.targetMileage,
+      actualMileage: week.actualMileage,
+      notes: week.notes,
+    }));
 
-      // Save all training days for this week
-      for (const day of week.trainingDays) {
-        await tx.insert(trainingDays).values({
-          id: day.id,
-          weekId: week.id,
-          dayOfWeek: day.dayOfWeek,
-          miles: day.miles,
-          description: day.description,
-        });
-      }
+    // Batch insert all weeks
+    if (weeksData.length > 0) {
+      await tx.insert(trainingWeeks).values(weeksData);
+    }
+
+    // Prepare all training days data for batch insert
+    const daysData = plan.weeks.flatMap(week =>
+      week.trainingDays.map(day => ({
+        id: day.id,
+        weekId: week.id,
+        dayOfWeek: Number(day.dayOfWeek),
+        date: day.date,
+        miles: day.miles,
+        description: day.description,
+      }))
+    );
+
+    // Batch insert all training days
+    if (daysData.length > 0) {
+      await tx.insert(trainingDays).values(daysData);
     }
 
     return savedPlan[0];

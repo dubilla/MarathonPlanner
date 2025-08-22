@@ -1,5 +1,5 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL;
@@ -13,12 +13,11 @@ if (!connectionString && process.env.NODE_ENV !== "development") {
   );
 }
 
-// Use a dummy connection string during build if not provided
-const sql = neon(
-  connectionString ||
-    "postgresql://user:password@localhost:5432/dummy"
-);
+// Use WebSocket-based connection pool for full PostgreSQL feature support
+const pool = new Pool({
+  connectionString: connectionString || "postgresql://user:password@localhost:5432/dummy"
+});
 
-console.log("[DATABASE] Database connection initialized");
+console.log("[DATABASE] Database connection initialized with WebSocket driver");
 
-export const db = drizzle(sql, { schema });
+export const db = drizzle(pool, { schema });

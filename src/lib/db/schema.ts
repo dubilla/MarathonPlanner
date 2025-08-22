@@ -130,6 +130,7 @@ export const trainingDays = pgTable(
       .notNull()
       .references(() => trainingWeeks.id, { onDelete: "cascade" }),
     dayOfWeek: integer("day_of_week").notNull(),
+    date: date("date").notNull(),
     miles: decimal("miles", { precision: 5, scale: 2 }).notNull(),
     description: text("description").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

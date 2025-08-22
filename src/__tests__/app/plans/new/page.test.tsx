@@ -2,24 +2,25 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useAuth } from '@/hooks/useAuth';
 import { PlanCreationService } from '@/services/PlanCreationService';
-import { savePlan } from '@/lib/db/queries';
 import PlansNewPage from '@/app/plans/new/page';
 
 jest.mock('@/hooks/useAuth');
 jest.mock('@/services/PlanCreationService');
-jest.mock('@/lib/db/queries', () => ({
-  savePlan: jest.fn(),
-}));
+
+// Mock fetch globally
+global.fetch = jest.fn();
+
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
     replace: jest.fn(),
   }),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockPlanCreationService = PlanCreationService as jest.MockedClass<typeof PlanCreationService>;
-const mockSavePlan = savePlan as jest.MockedFunction<typeof savePlan>;
+const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 const mockUser = {
   id: 'user-123',
@@ -72,7 +73,7 @@ describe('PlansNewPage', () => {
       loading: false,
       error: null
     });
-    mockSavePlan.mockReset();
+    mockFetch.mockReset();
   });
 
   describe('Page Structure', () => {
@@ -226,7 +227,10 @@ describe('PlansNewPage', () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
       mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
-      mockSavePlan.mockResolvedValue(undefined);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, plan: mockPlan }),
+      } as Response);
       
       render(<PlansNewPage />);
       
@@ -251,9 +255,9 @@ describe('PlansNewPage', () => {
       const createButton = screen.getByRole('button', { name: 'Create Plan' });
       await user.click(createButton);
       
-      // Should show success state
+      // Should redirect to plan view
       await waitFor(() => {
-        expect(screen.getByText('Plan created successfully!')).toBeInTheDocument();
+        expect(mockPush).toHaveBeenCalledWith('/plans/plan-123');
       });
     });
 
@@ -261,7 +265,7 @@ describe('PlansNewPage', () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
       mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
-      mockSavePlan.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockFetch.mockImplementation(() => new Promise(() => {})); // Never resolves
       
       render(<PlansNewPage />);
       

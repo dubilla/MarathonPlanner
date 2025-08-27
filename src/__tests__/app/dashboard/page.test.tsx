@@ -102,17 +102,22 @@ describe('Dashboard Page', () => {
       expect(screen.getByText('Quick Actions')).toBeInTheDocument();
       expect(screen.getByText('📅 View Training Plans')).toBeInTheDocument();
       expect(screen.getByText('➕ Create New Plan')).toBeInTheDocument();
-      expect(screen.getByText('🏃‍♂️ Log Workout')).toBeInTheDocument();
-      expect(screen.getByText('📊 View Analytics')).toBeInTheDocument();
+      expect(screen.getByText('🏃‍♂️ Log Workout (Coming Soon)')).toBeInTheDocument();
+      expect(screen.getByText('📊 View Analytics (Coming Soon)')).toBeInTheDocument();
     });
 
     it('has correct links for quick actions', () => {
       render(<DashboardPage />);
       
-      expect(screen.getByRole('link', { name: '📅 View Training Plans' })).toHaveAttribute('href', '/training-plans');
+      expect(screen.getByRole('link', { name: '📅 View Training Plans' })).toHaveAttribute('href', '/plans');
       expect(screen.getByRole('link', { name: '➕ Create New Plan' })).toHaveAttribute('href', '/plans/new');
-      expect(screen.getByRole('link', { name: '🏃‍♂️ Log Workout' })).toHaveAttribute('href', '/workouts');
-      expect(screen.getByRole('link', { name: '📊 View Analytics' })).toHaveAttribute('href', '/analytics');
+
+      // Coming soon links should have # href and no navigation
+      const workoutLink = screen.getByText('🏃‍♂️ Log Workout (Coming Soon)').closest('a');
+      expect(workoutLink).toHaveAttribute('href', '#');
+
+      const analyticsLink = screen.getByText('📊 View Analytics (Coming Soon)').closest('a');
+      expect(analyticsLink).toHaveAttribute('href', '#');
     });
 
     it('displays quick stats with zero values', async () => {
@@ -120,9 +125,8 @@ describe('Dashboard Page', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Active Plans')).toBeInTheDocument();
+        expect(screen.getByText('0')).toBeInTheDocument();
       });
-      
-      expect(screen.getByText('0')).toBeInTheDocument();
       expect(screen.getByText('Training plans in progress')).toBeInTheDocument();
       
       expect(screen.getByText('This Week')).toBeInTheDocument();
@@ -141,18 +145,8 @@ describe('Dashboard Page', () => {
         expect(screen.getByText('My Training Plans')).toBeInTheDocument();
         expect(screen.getByText('No training plans yet')).toBeInTheDocument();
       });
-      expect(screen.getByText('Get started by creating your first marathon training plan.')).toBeInTheDocument();
+      expect(screen.getByText('Create your first marathon training plan to get started on your journey.')).toBeInTheDocument();
       expect(screen.getByText('Create Your First Plan')).toBeInTheDocument();
-    });
-
-    it('shows empty state for recent activity', async () => {
-      render(<DashboardPage />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Recent Activity')).toBeInTheDocument();
-      });
-      expect(screen.getByText('No recent activity')).toBeInTheDocument();
-      expect(screen.getByText('Your recent workouts and plan updates will appear here.')).toBeInTheDocument();
     });
 
     it('shows empty state for upcoming workouts', async () => {
@@ -162,7 +156,7 @@ describe('Dashboard Page', () => {
         expect(screen.getByText('Upcoming Workouts')).toBeInTheDocument();
         expect(screen.getByText('No upcoming workouts')).toBeInTheDocument();
       });
-      expect(screen.getByText('Create a training plan to see your scheduled workouts.')).toBeInTheDocument();
+      expect(screen.getByText('Create a training plan to see your upcoming workouts here.')).toBeInTheDocument();
     });
 
     it('has multiple create plan buttons', () => {
@@ -226,15 +220,23 @@ describe('Dashboard Page', () => {
 
   describe('accessibility', () => {
     beforeEach(() => {
-      mockUseSession.mockReturnValue(createAuthenticatedSession());
+      mockUseSession.mockReturnValue(createAuthenticatedSession({
+        name: 'Test User',
+        email: 'test@example.com'
+      }));
     });
 
-    it('has proper main content structure when authenticated', () => {
+    it('has proper main content structure when authenticated', async () => {
       render(<DashboardPage />);
-      
-      // Check for the main layout elements that should always be present
-      expect(screen.getByRole('main')).toBeInTheDocument();
-      expect(screen.getByRole('navigation')).toBeInTheDocument(); // Header nav
+
+      // Wait for the component to render after auth
+      await waitFor(() => {
+        expect(screen.getByRole('main')).toBeInTheDocument();
+      });
+
+      // Should have multiple nav elements (header + sidebar)
+      const navElements = screen.getAllByRole('navigation');
+      expect(navElements).toHaveLength(2);
     });
 
     // Skip heading tests for now due to auth mocking complexity

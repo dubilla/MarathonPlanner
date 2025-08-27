@@ -28,7 +28,7 @@ export async function GET() {
       weeklyMiles: 0,
       currentStreak: 0
     };
-    
+
     return NextResponse.json({ stats });
   } catch (error) {
     console.error('Failed to fetch dashboard stats:', error);

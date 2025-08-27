@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import DashboardPage from '@/app/dashboard/page';
 import { 
@@ -7,6 +7,9 @@ import {
   createUnauthenticatedSession,
   createLoadingSession
 } from '../../utils/auth-test-utils';
+
+// Mock fetch globally
+global.fetch = jest.fn();
 
 // Mock Next.js components
 jest.mock('next/navigation', () => ({
@@ -33,10 +36,27 @@ jest.mock('next/link', () => {
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
+const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Dashboard Page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock successful API responses
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ plans: [] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ stats: { activePlans: 0, weeklyMiles: 0, currentStreak: 0 } }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ workouts: [] }),
+      } as Response);
+    
     mockUseRouter.mockReturnValue({
       push: mockPush,
       replace: jest.fn(),
@@ -55,21 +75,25 @@ describe('Dashboard Page', () => {
       }));
     });
 
-    it('displays welcome message with user name', () => {
+    it('displays welcome message with user name', async () => {
       render(<DashboardPage />);
       
-      expect(screen.getByText('Welcome back, John Runner!')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Welcome back, John Runner!')).toBeInTheDocument();
+      });
       expect(screen.getByText(/Track your marathon training progress/)).toBeInTheDocument();
     });
 
-    it('displays welcome message with email username when name is not available', () => {
+    it('displays welcome message with email username when name is not available', async () => {
       mockUseSession.mockReturnValue(createAuthenticatedSession({
         email: 'runner@example.com'
       }));
 
       render(<DashboardPage />);
       
-      expect(screen.getByText('Welcome back, runner!')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Welcome back, runner!')).toBeInTheDocument();
+      });
     });
 
     it('displays quick action navigation', () => {
@@ -91,10 +115,13 @@ describe('Dashboard Page', () => {
       expect(screen.getByRole('link', { name: '📊 View Analytics' })).toHaveAttribute('href', '/analytics');
     });
 
-    it('displays quick stats with zero values', () => {
+    it('displays quick stats with zero values', async () => {
       render(<DashboardPage />);
       
-      expect(screen.getByText('Active Plans')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Active Plans')).toBeInTheDocument();
+      });
+      
       expect(screen.getByText('0')).toBeInTheDocument();
       expect(screen.getByText('Training plans in progress')).toBeInTheDocument();
       
@@ -107,28 +134,34 @@ describe('Dashboard Page', () => {
       expect(screen.getByText('Current training streak')).toBeInTheDocument();
     });
 
-    it('shows empty state for training plans', () => {
+    it('shows empty state for training plans', async () => {
       render(<DashboardPage />);
       
-      expect(screen.getByText('My Training Plans')).toBeInTheDocument();
-      expect(screen.getByText('No training plans yet')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('My Training Plans')).toBeInTheDocument();
+        expect(screen.getByText('No training plans yet')).toBeInTheDocument();
+      });
       expect(screen.getByText('Get started by creating your first marathon training plan.')).toBeInTheDocument();
       expect(screen.getByText('Create Your First Plan')).toBeInTheDocument();
     });
 
-    it('shows empty state for recent activity', () => {
+    it('shows empty state for recent activity', async () => {
       render(<DashboardPage />);
       
-      expect(screen.getByText('Recent Activity')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Recent Activity')).toBeInTheDocument();
+      });
       expect(screen.getByText('No recent activity')).toBeInTheDocument();
       expect(screen.getByText('Your recent workouts and plan updates will appear here.')).toBeInTheDocument();
     });
 
-    it('shows empty state for upcoming workouts', () => {
+    it('shows empty state for upcoming workouts', async () => {
       render(<DashboardPage />);
       
-      expect(screen.getByText('Upcoming Workouts')).toBeInTheDocument();
-      expect(screen.getByText('No upcoming workouts')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Upcoming Workouts')).toBeInTheDocument();
+        expect(screen.getByText('No upcoming workouts')).toBeInTheDocument();
+      });
       expect(screen.getByText('Create a training plan to see your scheduled workouts.')).toBeInTheDocument();
     });
 

@@ -73,6 +73,7 @@ export const createTrainingDay = async (data: NewTrainingDay) => {
 };
 
 // Get full training plan with weeks and training days
+// Now using nested query API with WebSocket driver
 export const getFullTrainingPlan = async (id: string) => {
   const plan = await db.query.trainingPlans.findFirst({
     where: eq(trainingPlans.id, id),

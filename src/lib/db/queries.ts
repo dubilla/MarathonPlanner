@@ -73,22 +73,58 @@ export const createTrainingDay = async (data: NewTrainingDay) => {
 };
 
 // Get full training plan with weeks and training days
-// Now using nested query API with WebSocket driver
-export const getFullTrainingPlan = async (id: string) => {
-  const plan = await db.query.trainingPlans.findFirst({
-    where: eq(trainingPlans.id, id),
-    with: {
-      weeks: {
-        orderBy: trainingWeeks.weekNumber,
-        with: {
-          trainingDays: {
-            orderBy: trainingDays.dayOfWeek,
-          },
-        },
-      },
-    },
-  });
-  return plan;
+export const getFullTrainingPlan = async (id: string): Promise<PlanWithRelations | null> => {
+  try {
+    // First get the plan
+    const plan = await db
+      .select()
+      .from(trainingPlans)
+      .where(eq(trainingPlans.id, id))
+      .limit(1);
+    
+    if (!plan || plan.length === 0) {
+      return null;
+    }
+
+    // Then get all weeks for this plan
+    const weeks = await db
+      .select()
+      .from(trainingWeeks)
+      .where(eq(trainingWeeks.planId, id))
+      .orderBy(trainingWeeks.weekNumber);
+
+    // Get all training days for all weeks
+    const weekIds = weeks.map(w => w.id);
+    let trainingDaysForAllWeeks: typeof trainingDays.$inferSelect[] = [];
+    
+    if (weekIds.length > 0) {
+      // Fetch training days for all weeks at once
+      const allDays = await Promise.all(
+        weekIds.map(weekId =>
+          db
+            .select()
+            .from(trainingDays)
+            .where(eq(trainingDays.weekId, weekId))
+            .orderBy(trainingDays.dayOfWeek)
+        )
+      );
+      trainingDaysForAllWeeks = allDays.flat();
+    }
+
+    // Assemble the full plan structure
+    const fullPlan: PlanWithRelations = {
+      ...plan[0],
+      weeks: weeks.map(week => ({
+        ...week,
+        trainingDays: trainingDaysForAllWeeks.filter(day => day.weekId === week.id)
+      }))
+    };
+
+    return fullPlan;
+  } catch (error) {
+    console.error('Failed to fetch training plan:', error);
+    throw error;
+  }
 };
 
 export const savePlan = async (plan: PlanWithRelations) => {

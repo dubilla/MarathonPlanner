@@ -4,7 +4,12 @@
       "Bash(npx create-next-app:*)",
       "Bash(mv:*)",
       "Bash(true)",
-      "Bash(rmdir:*)"
+      "Bash(rmdir:*)",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click"
     ],
     "defaultMode": "acceptEdits"
   }

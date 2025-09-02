@@ -22,13 +22,12 @@ function PlansNewPageContent() {
   const planService = new PlanCreationService();
 
   const handleFormSubmit = async (input: CreateMarathonPlanInput) => {
-    try {
-      const plan = await planService.createMarathonPlan(input);
-      setGeneratedPlan(plan);
-      setPageState('preview');
-    } catch (error) {
-      throw error; // Let the form handle the error display
+    const plan = await planService.createMarathonPlan(input);
+    if (!plan) {
+      throw new Error('Failed to create plan');
     }
+    setGeneratedPlan(plan);
+    setPageState('preview');
   };
 
   const handleTryAgain = () => {
@@ -42,31 +41,37 @@ function PlansNewPageContent() {
 
     setIsCreating(true);
     setCreateError(null);
+    
+    let response;
     try {
-      const response = await fetch('/api/plans/create', {
+      response = await fetch('/api/plans/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(generatedPlan),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save plan');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        router.push(`/plans/${generatedPlan.id}`);
-      } else {
-        throw new Error(data.error || 'Failed to save plan');
-      }
     } catch (error) {
-      console.error('Failed to save plan:', error);
+      console.error('Network error saving plan:', error);
       setCreateError('Failed to save training plan. Please try again.');
-    } finally {
       setIsCreating(false);
+      return;
     }
+
+    if (!response.ok) {
+      setCreateError('Failed to save training plan. Please try again.');
+      setIsCreating(false);
+      return;
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      router.push(`/plans/${generatedPlan.id}`);
+    } else {
+      setCreateError(data.error || 'Failed to save training plan. Please try again.');
+    }
+    
+    setIsCreating(false);
   };
 
   return (

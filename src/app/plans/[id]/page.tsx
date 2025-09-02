@@ -20,30 +20,33 @@ function PlanViewContent() {
     const loadPlan = async () => {
       if (!id || typeof id !== 'string') return;
       
+      let response;
       try {
-        const response = await fetch(`/api/plans/${id}`);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('Training plan not found');
-          } else if (response.status === 403) {
-            setError('You do not have permission to view this plan');
-          } else if (response.status === 401) {
-            setError('You must be logged in to view this plan');
-          } else {
-            setError('Failed to load training plan');
-          }
-          return;
-        }
-        
-        const data = await response.json();
-        setPlan(data.plan);
+        response = await fetch(`/api/plans/${id}`);
       } catch (err) {
-        console.error('Failed to load plan:', err);
+        console.error('Network error loading plan:', err);
         setError('Failed to load training plan');
-      } finally {
         setLoading(false);
+        return;
       }
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError('Training plan not found');
+        } else if (response.status === 403) {
+          setError('You do not have permission to view this plan');
+        } else if (response.status === 401) {
+          setError('You must be logged in to view this plan');
+        } else {
+          setError('Failed to load training plan');
+        }
+        setLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setPlan(data.plan);
+      setLoading(false);
     };
 
     if (user) {

@@ -148,3 +148,72 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id: planId } = await params;
+
+  if (!planId) {
+    return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
+  }
+
+  // Check if plan exists and user owns it
+  let existingPlan;
+  try {
+    existingPlan = await getFullTrainingPlan(planId);
+  } catch (error) {
+    console.error("Database error fetching training plan:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch training plan" },
+      { status: 500 }
+    );
+  }
+
+  if (!existingPlan) {
+    return NextResponse.json(
+      { error: "Training plan not found" },
+      { status: 404 }
+    );
+  }
+
+  if (existingPlan.userId !== session.user.id) {
+    return NextResponse.json(
+      { error: "You do not have permission to delete this plan" },
+      { status: 403 }
+    );
+  }
+
+  // Delete the plan (cascade deletion will handle weeks and days)
+  try {
+    const deletedPlan = await db
+      .delete(trainingPlans)
+      .where(eq(trainingPlans.id, planId))
+      .returning();
+
+    if (deletedPlan.length === 0) {
+      return NextResponse.json(
+        { error: "Failed to delete plan" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "Training plan deleted successfully",
+      planId: planId,
+    });
+  } catch (error) {
+    console.error("Database error deleting training plan:", error);
+    return NextResponse.json(
+      { error: "Failed to delete training plan" },
+      { status: 500 }
+    );
+  }
+}

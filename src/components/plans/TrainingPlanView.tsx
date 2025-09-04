@@ -36,6 +36,10 @@ export default function TrainingPlanView({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!editedPlan.name.trim()) {
@@ -88,6 +92,43 @@ export default function TrainingPlanView({
     });
     setIsEditing(false);
     setEditError(null);
+  };
+
+  const handleDelete = async () => {
+    if (deleteConfirmation !== plan.name) {
+      setDeleteError(
+        "Plan name does not match. Please type the exact plan name to confirm deletion."
+      );
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const response = await fetch(`/api/plans/${plan.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setDeleteError(errorData.error || "Failed to delete plan");
+        return;
+      }
+
+      // Redirect to dashboard on successful deletion
+      onBack();
+    } catch {
+      setDeleteError("Network error occurred");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setDeleteConfirmation("");
+    setDeleteError(null);
   };
 
   const getCurrentWeek = () => {
@@ -356,6 +397,12 @@ export default function TrainingPlanView({
                 className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-md transition-colors"
               >
                 Edit Plan
+              </button>
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                className="bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-md transition-colors"
+              >
+                Delete Plan
               </button>
               <button
                 onClick={onBack}
@@ -675,6 +722,83 @@ export default function TrainingPlanView({
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Delete Training Plan
+              </h3>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="mb-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="text-red-600 text-2xl">⚠️</div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      This action cannot be undone
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      This will permanently delete the training plan and all its
+                      weeks and workouts.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="delete-confirmation"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Type{" "}
+                  <span className="font-semibold text-gray-900">
+                    &quot;{plan.name}&quot;
+                  </span>{" "}
+                  to confirm deletion:
+                </label>
+                <input
+                  id="delete-confirmation"
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={e => setDeleteConfirmation(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Enter plan name"
+                />
+              </div>
+
+              {deleteError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mb-4">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting || deleteConfirmation !== plan.name}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {isDeleting && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                <span>{isDeleting ? "Deleting..." : "Delete Plan"}</span>
+              </button>
             </div>
           </div>
         </div>

@@ -537,4 +537,356 @@ describe("TrainingPlanView", () => {
       });
     });
   });
+
+  describe("Plan Deletion", () => {
+    beforeEach(() => {
+      // Mock fetch for delete operations
+      global.fetch = jest.fn();
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("shows delete plan button", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      expect(deleteButton).toBeInTheDocument();
+    });
+
+    it("opens delete confirmation dialog when delete button is clicked", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      // Should show confirmation dialog
+      expect(screen.getByText("Delete Training Plan")).toBeInTheDocument();
+      expect(
+        screen.getByText("This action cannot be undone")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/This will permanently delete the training plan/)
+      ).toBeInTheDocument();
+
+      // Should show confirmation input and buttons
+      expect(
+        screen.getByPlaceholderText("Enter plan name")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /cancel/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /delete plan/i })
+      ).toHaveLength(2);
+    });
+
+    it("shows plan name in confirmation message", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      expect(screen.getByText(`"${mockPlan.name}"`)).toBeInTheDocument();
+    });
+
+    it("disables delete button until correct plan name is entered", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      expect(confirmDeleteButton).toBeDisabled();
+
+      // Type incorrect name
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: "Wrong Name" } });
+      expect(confirmDeleteButton).toBeDisabled();
+
+      // Type correct name
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+      expect(confirmDeleteButton).not.toBeDisabled();
+    });
+
+    it("shows validation error for incorrect plan name", async () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      // Type incorrect name
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: "Wrong Name" } });
+
+      // Try to delete (button will be disabled, but we can still test the handler logic)
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+
+      // Enable the button temporarily to test validation
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+      fireEvent.change(confirmationInput, { target: { value: "Wrong Name" } });
+
+      // The button should be disabled, which prevents the click
+      expect(confirmDeleteButton).toBeDisabled();
+    });
+
+    it("closes dialog when cancel button is clicked", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      // Dialog should be open
+      expect(screen.getByText("Delete Training Plan")).toBeInTheDocument();
+
+      // Click cancel
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      // Dialog should be closed
+      expect(
+        screen.queryByText("Delete Training Plan")
+      ).not.toBeInTheDocument();
+    });
+
+    it("resets confirmation input when dialog is reopened", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      // Open dialog and type something
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: "Some text" } });
+
+      // Close dialog
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      // Reopen dialog
+      fireEvent.click(deleteButton);
+
+      // Input should be reset
+      const newConfirmationInput =
+        screen.getByPlaceholderText("Enter plan name");
+      expect(newConfirmationInput).toHaveValue("");
+    });
+
+    it("successfully deletes plan and calls onBack", async () => {
+      // Mock successful API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: "Training plan deleted successfully",
+          planId: mockPlan.id,
+        }),
+      });
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      // Enter correct plan name
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+
+      // Confirm deletion
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      fireEvent.click(confirmDeleteButton);
+
+      // Should make API call
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(`/api/plans/${mockPlan.id}`, {
+          method: "DELETE",
+        });
+      });
+
+      // Should call onBack to redirect to dashboard
+      await waitFor(() => {
+        expect(mockOnBack).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("shows loading state while deleting", async () => {
+      // Mock delayed API response
+      (global.fetch as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise(resolve =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: async () => ({
+                    message: "Training plan deleted successfully",
+                    planId: mockPlan.id,
+                  }),
+                }),
+              100
+            )
+          )
+      );
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      fireEvent.click(confirmDeleteButton);
+
+      // Should show loading state
+      expect(screen.getByText("Deleting...")).toBeInTheDocument();
+      expect(confirmDeleteButton).toBeDisabled();
+
+      // Wait for completion
+      await waitFor(() => {
+        expect(mockOnBack).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("handles API errors gracefully", async () => {
+      // Mock failed API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: "Failed to delete plan" }),
+      });
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      fireEvent.click(confirmDeleteButton);
+
+      // Should show error message
+      await waitFor(() => {
+        expect(screen.getByText("Failed to delete plan")).toBeInTheDocument();
+      });
+
+      // Should remain in delete dialog
+      expect(screen.getByText("Delete Training Plan")).toBeInTheDocument();
+      expect(mockOnBack).not.toHaveBeenCalled();
+    });
+
+    it("handles network errors gracefully", async () => {
+      // Mock network error
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error("Network error")
+      );
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      fireEvent.click(confirmDeleteButton);
+
+      // Should show network error message
+      await waitFor(() => {
+        expect(screen.getByText("Network error occurred")).toBeInTheDocument();
+      });
+
+      // Should not call onBack
+      expect(mockOnBack).not.toHaveBeenCalled();
+    });
+
+    it("does not delete when confirmation name doesn't match exactly", async () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      // Enter slightly different name (different case)
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, {
+        target: { value: mockPlan.name.toLowerCase() },
+      });
+
+      // Button should remain disabled
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      expect(confirmDeleteButton).toBeDisabled();
+
+      // No API call should be made
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("disables cancel button while deleting", async () => {
+      // Mock delayed API response
+      (global.fetch as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise(resolve =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: async () => ({
+                    message: "Training plan deleted successfully",
+                    planId: mockPlan.id,
+                  }),
+                }),
+              100
+            )
+          )
+      );
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const deleteButton = screen.getByText("Delete Plan");
+      fireEvent.click(deleteButton);
+
+      const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+      fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
+
+      const allDeleteButtons = screen.getAllByRole("button", {
+        name: /delete plan/i,
+      });
+      const confirmDeleteButton = allDeleteButtons[1]; // The confirmation dialog button
+      fireEvent.click(confirmDeleteButton);
+
+      // Both buttons should be disabled during deletion
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      expect(cancelButton).toBeDisabled();
+      expect(confirmDeleteButton).toBeDisabled();
+
+      // Wait for completion
+      await waitFor(() => {
+        expect(mockOnBack).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
 });

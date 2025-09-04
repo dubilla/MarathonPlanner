@@ -14,3 +14,4 @@
   (like required, minLength) and test JavaScript validation by filling forms enough to pass HTML5 validation so your
   custom validation logic can execute.
 - Use npm run fix-all to run prettier after making changes
+- The todo list is at TODO.md

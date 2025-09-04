@@ -22,6 +22,68 @@ export default function TrainingPlanView({ plan, onBack }: TrainingPlanViewProps
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [workoutProgress, setWorkoutProgress] = useState<Record<string, WorkoutProgress>>({});
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPlan, setEditedPlan] = useState({
+    name: plan.name,
+    description: plan.description || '',
+    marathonDate: plan.marathonDate,
+    goalTime: plan.goalTime || ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!editedPlan.name.trim()) {
+      setEditError('Plan name is required');
+      return;
+    }
+
+    if (!editedPlan.marathonDate) {
+      setEditError('Marathon date is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setEditError(null);
+
+    try {
+      const response = await fetch(`/api/plans/${plan.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editedPlan),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setEditError(errorData.error || 'Failed to update plan');
+        return;
+      }
+
+      await response.json();
+      // Update the plan data in the parent component would require a prop
+      // For now, we'll just exit editing mode and the user can refresh
+      setIsEditing(false);
+      // In a real app, we'd update the plan state or reload the page
+      window.location.reload();
+    } catch {
+      setEditError('Network error occurred');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedPlan({
+      name: plan.name,
+      description: plan.description || '',
+      marathonDate: plan.marathonDate,
+      goalTime: plan.goalTime || ''
+    });
+    setIsEditing(false);
+    setEditError(null);
+  };
 
   const getCurrentWeek = () => {
     const now = new Date();
@@ -130,17 +192,120 @@ export default function TrainingPlanView({ plan, onBack }: TrainingPlanViewProps
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{plan.name}</h1>
-          <p className="text-gray-600">{plan.description}</p>
+      <div className="flex items-start justify-between">
+        <div className="flex-1 mr-4">
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="plan-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Plan Name
+                </label>
+                <input
+                  id="plan-name"
+                  type="text"
+                  value={editedPlan.name}
+                  onChange={(e) => setEditedPlan(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full text-3xl font-bold text-gray-900 bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter plan name"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="plan-description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  id="plan-description"
+                  value={editedPlan.description}
+                  onChange={(e) => setEditedPlan(prev => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  className="w-full text-gray-600 bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter plan description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="marathon-date" className="block text-sm font-medium text-gray-700 mb-1">
+                    Marathon Date
+                  </label>
+                  <input
+                    id="marathon-date"
+                    type="date"
+                    value={editedPlan.marathonDate}
+                    onChange={(e) => setEditedPlan(prev => ({ ...prev, marathonDate: e.target.value }))}
+                    className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="goal-time" className="block text-sm font-medium text-gray-700 mb-1">
+                    Goal Time (optional)
+                  </label>
+                  <input
+                    id="goal-time"
+                    type="text"
+                    value={editedPlan.goalTime}
+                    onChange={(e) => setEditedPlan(prev => ({ ...prev, goalTime: e.target.value }))}
+                    className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 3:30:00"
+                  />
+                </div>
+              </div>
+
+              {editError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
+                  {editError}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{plan.name}</h1>
+              <p className="text-gray-600">{plan.description}</p>
+              {plan.goalTime && (
+                <p className="text-sm text-gray-500 mt-1">Goal: {plan.goalTime}</p>
+              )}
+            </div>
+          )}
         </div>
-        <button
-          onClick={onBack}
-          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
-        >
-          Back to Dashboard
-        </button>
+        
+        <div className="flex items-center space-x-2">
+          {isEditing ? (
+            <>
+              <button
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {isSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                <span>{isSaving ? 'Saving...' : 'Save'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-md transition-colors"
+              >
+                Edit Plan
+              </button>
+              <button
+                onClick={onBack}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
+              >
+                Back to Dashboard
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Plan Overview Stats */}

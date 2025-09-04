@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import TrainingPlanView from '@/components/plans/TrainingPlanView';
 import { PlanWithRelations } from '@/services/PlanCreationService';
 
@@ -247,5 +247,260 @@ describe('TrainingPlanView', () => {
     
     // Restore original Date
     global.Date = originalDate;
+  });
+
+  describe('Plan Editing', () => {
+    beforeEach(() => {
+      // Mock fetch for edit operations
+      global.fetch = jest.fn();
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('shows edit plan button', () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      expect(editButton).toBeInTheDocument();
+    });
+
+    it('switches to edit mode when edit button is clicked', () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      // Should show editing form fields
+      expect(screen.getByRole('textbox', { name: /plan name/i })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /description/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/marathon date/i)).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /goal time/i })).toBeInTheDocument();
+      
+      // Should show save/cancel buttons
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+      
+      // Should hide edit button
+      expect(screen.queryByText('Edit Plan')).not.toBeInTheDocument();
+    });
+
+    it('pre-populates form fields with current plan data', () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      const descriptionField = screen.getByRole('textbox', { name: /description/i });
+      const dateField = screen.getByLabelText(/marathon date/i);
+      
+      expect(nameField).toHaveValue('Test Marathon Training Plan');
+      expect(descriptionField).toHaveValue('18-week marathon training plan ending on December 31, 2024');
+      expect(dateField).toHaveValue('2024-12-31');
+    });
+
+    it('shows goal time when plan has one', () => {
+      const planWithGoalTime = {
+        ...mockPlan,
+        goalTime: '3:30:00'
+      };
+      
+      render(<TrainingPlanView plan={planWithGoalTime} onBack={mockOnBack} />);
+      
+      // Should show goal time in display mode
+      expect(screen.getByText('Goal: 3:30:00')).toBeInTheDocument();
+      
+      // Switch to edit mode
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      const goalTimeField = screen.getByRole('textbox', { name: /goal time/i });
+      expect(goalTimeField).toHaveValue('3:30:00');
+    });
+
+    it('cancels editing and reverts changes', () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      // Modify a field
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      fireEvent.change(nameField, { target: { value: 'Modified Plan Name' } });
+      
+      // Cancel editing
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      fireEvent.click(cancelButton);
+      
+      // Should be back in display mode
+      expect(screen.getByText('Edit Plan')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon Training Plan')).toBeInTheDocument();
+      expect(screen.queryByText('Modified Plan Name')).not.toBeInTheDocument();
+    });
+
+    it('shows validation error for empty plan name', async () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      // Clear the plan name
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      fireEvent.change(nameField, { target: { value: '' } });
+      
+      // Try to save
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should show validation error
+      expect(screen.getByText('Plan name is required')).toBeInTheDocument();
+      
+      // Should not make API call
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('shows validation error for empty marathon date', async () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      // Clear the marathon date
+      const dateField = screen.getByLabelText(/marathon date/i);
+      fireEvent.change(dateField, { target: { value: '' } });
+      
+      // Try to save
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should show validation error
+      expect(screen.getByText('Marathon date is required')).toBeInTheDocument();
+      
+      // Should not make API call
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('saves successfully and makes correct API call', async () => {
+      // Mock successful API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ plan: { ...mockPlan, name: 'Updated Plan' } })
+      });
+      
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      // Modify plan data
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      const goalTimeField = screen.getByRole('textbox', { name: /goal time/i });
+      fireEvent.change(nameField, { target: { value: 'Updated Plan Name' } });
+      fireEvent.change(goalTimeField, { target: { value: '3:30:00' } });
+      
+      // Save changes
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should make API call with correct data
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(`/api/plans/${mockPlan.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'Updated Plan Name',
+            description: '18-week marathon training plan ending on December 31, 2024',
+            marathonDate: '2024-12-31',
+            goalTime: '3:30:00'
+          })
+        });
+      });
+      
+      // Should exit edit mode after successful save
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+      });
+    });
+
+    it('handles API errors gracefully', async () => {
+      // Mock failed API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Failed to update plan' })
+      });
+      
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      fireEvent.change(nameField, { target: { value: 'Updated Plan Name' } });
+      
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should show error message
+      await waitFor(() => {
+        expect(screen.getByText('Failed to update plan')).toBeInTheDocument();
+      });
+      
+      // Should remain in edit mode
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    });
+
+    it('handles network errors gracefully', async () => {
+      // Mock network error
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      const nameField = screen.getByRole('textbox', { name: /plan name/i });
+      fireEvent.change(nameField, { target: { value: 'Updated Plan Name' } });
+      
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should show network error message
+      await waitFor(() => {
+        expect(screen.getByText('Network error occurred')).toBeInTheDocument();
+      });
+    });
+
+    it('shows loading state while saving', async () => {
+      // Mock delayed API response
+      (global.fetch as jest.Mock).mockImplementationOnce(() => 
+        new Promise((resolve) => setTimeout(() => resolve({
+          ok: true,
+          json: async () => ({ plan: mockPlan })
+        }), 100))
+      );
+      
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+      
+      const editButton = screen.getByText('Edit Plan');
+      fireEvent.click(editButton);
+      
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(saveButton);
+      
+      // Should show loading state
+      expect(screen.getByText('Saving...')).toBeInTheDocument();
+      expect(saveButton).toBeDisabled();
+      
+      // Wait for completion
+      await waitFor(() => {
+        expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
+      });
+    });
   });
 });

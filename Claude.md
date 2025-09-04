@@ -13,3 +13,4 @@
 - When testing forms with both HTML5 and JavaScript validation, test HTML5 validation by checking element attributes
   (like required, minLength) and test JavaScript validation by filling forms enough to pass HTML5 validation so your
   custom validation logic can execute.
+- Use npm run fix-all to run prettier after making changes

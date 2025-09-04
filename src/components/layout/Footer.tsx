@@ -34,7 +34,7 @@ export default function Footer() {
                 Dashboard
               </Link>
               <Link
-                href="/training-plans"
+                href="/plans"
                 className="block text-gray-400 hover:text-white transition-colors"
               >
                 Training Plans

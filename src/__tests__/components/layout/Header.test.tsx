@@ -96,7 +96,7 @@ describe("Header", () => {
       );
       expect(
         screen.getByRole("link", { name: "Training Plans" })
-      ).toHaveAttribute("href", "/training-plans");
+      ).toHaveAttribute("href", "/plans");
     });
 
     it("displays user email", () => {

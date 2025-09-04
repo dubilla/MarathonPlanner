@@ -80,7 +80,9 @@ describe("/api/plans/[id] DELETE", () => {
     });
 
     it("should return 401 if user session has no user id", async () => {
-      mockGetServerSession.mockResolvedValue({ user: {} } as typeof mockSession);
+      mockGetServerSession.mockResolvedValue({
+        user: {},
+      } as typeof mockSession);
 
       const response = await DELETE(mockRequest, { params: mockParams });
       const data = await response.json();
@@ -135,7 +137,9 @@ describe("/api/plans/[id] DELETE", () => {
 
     it("should return 403 if user does not own the plan", async () => {
       const otherUsersPlan = { ...mockPlan, userId: "other-user-456" };
-      mockGetFullTrainingPlan.mockResolvedValue(otherUsersPlan as typeof mockPlan);
+      mockGetFullTrainingPlan.mockResolvedValue(
+        otherUsersPlan as typeof mockPlan
+      );
 
       const response = await DELETE(mockRequest, { params: mockParams });
       const data = await response.json();

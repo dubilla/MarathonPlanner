@@ -31,7 +31,7 @@ export default function Header() {
                   Dashboard
                 </Link>
                 <Link
-                  href="/training-plans"
+                  href="/plans"
                   className="text-gray-700 hover:text-blue-600 font-medium"
                 >
                   Training Plans
@@ -107,7 +107,7 @@ export default function Header() {
                     Dashboard
                   </Link>
                   <Link
-                    href="/training-plans"
+                    href="/plans"
                     className="text-gray-700 hover:text-blue-600 font-medium py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

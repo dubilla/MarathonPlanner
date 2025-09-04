@@ -42,13 +42,13 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        action: { label: "Action", type: "text" }
+        action: { label: "Action", type: "text" },
       },
       async authorize(credentials) {
         console.log("[CREDENTIALS AUTH] Starting authorization with:", {
           email: credentials?.email,
           hasPassword: !!credentials?.password,
-          action: credentials?.action
+          action: credentials?.action,
         });
 
         if (!credentials?.email || !credentials?.password) {
@@ -61,23 +61,28 @@ export const authOptions: NextAuthOptions = {
         try {
           if (action === "signup") {
             console.log("[CREDENTIALS AUTH] Processing signup for:", email);
-            
+
             const existingUser = await db
               .select()
               .from(nextAuthUsers)
               .where(eq(nextAuthUsers.email, email))
               .limit(1);
 
-            console.log("[CREDENTIALS AUTH] Existing user check result:", existingUser.length > 0);
+            console.log(
+              "[CREDENTIALS AUTH] Existing user check result:",
+              existingUser.length > 0
+            );
 
             if (existingUser.length > 0) {
-              console.log("[CREDENTIALS AUTH] User already exists, throwing error");
+              console.log(
+                "[CREDENTIALS AUTH] User already exists, throwing error"
+              );
               throw new Error("User already exists");
             }
 
             console.log("[CREDENTIALS AUTH] Hashing password...");
             const hashedPassword = await bcrypt.hash(password, 12);
-            
+
             console.log("[CREDENTIALS AUTH] Creating new user...");
             const newUser = await db
               .insert(nextAuthUsers)
@@ -90,7 +95,7 @@ export const authOptions: NextAuthOptions = {
 
             console.log("[CREDENTIALS AUTH] User created successfully:", {
               id: newUser[0].id,
-              email: newUser[0].email
+              email: newUser[0].email,
             });
 
             return {
@@ -102,7 +107,7 @@ export const authOptions: NextAuthOptions = {
 
           if (action === "signin") {
             console.log("[CREDENTIALS AUTH] Processing signin for:", email);
-            
+
             const user = await db
               .select()
               .from(nextAuthUsers)
@@ -111,7 +116,7 @@ export const authOptions: NextAuthOptions = {
 
             console.log("[CREDENTIALS AUTH] User lookup result:", {
               found: user.length > 0,
-              hasPassword: user.length > 0 ? !!user[0].password : false
+              hasPassword: user.length > 0 ? !!user[0].password : false,
             });
 
             if (user.length === 0 || !user[0].password) {
@@ -120,9 +125,15 @@ export const authOptions: NextAuthOptions = {
             }
 
             console.log("[CREDENTIALS AUTH] Comparing passwords...");
-            const isPasswordValid = await bcrypt.compare(password, user[0].password);
-            
-            console.log("[CREDENTIALS AUTH] Password validation result:", isPasswordValid);
+            const isPasswordValid = await bcrypt.compare(
+              password,
+              user[0].password
+            );
+
+            console.log(
+              "[CREDENTIALS AUTH] Password validation result:",
+              isPasswordValid
+            );
 
             if (!isPasswordValid) {
               console.log("[CREDENTIALS AUTH] Invalid password");
@@ -140,7 +151,10 @@ export const authOptions: NextAuthOptions = {
           console.log("[CREDENTIALS AUTH] Unknown action:", action);
           return null;
         } catch (error) {
-          console.error("[CREDENTIALS AUTH] Error during authorization:", error);
+          console.error(
+            "[CREDENTIALS AUTH] Error during authorization:",
+            error
+          );
           throw error;
         }
       },

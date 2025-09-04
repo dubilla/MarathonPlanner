@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import MainLayout from '@/components/layout/MainLayout';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { PlanWithRelations } from '@/services/PlanCreationService';
-import TrainingPlanView from '@/components/plans/TrainingPlanView';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import MainLayout from "@/components/layout/MainLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { PlanWithRelations } from "@/services/PlanCreationService";
+import TrainingPlanView from "@/components/plans/TrainingPlanView";
 
 function PlanViewContent() {
   const { id } = useParams();
@@ -18,32 +18,32 @@ function PlanViewContent() {
 
   useEffect(() => {
     const loadPlan = async () => {
-      if (!id || typeof id !== 'string') return;
-      
+      if (!id || typeof id !== "string") return;
+
       let response;
       try {
         response = await fetch(`/api/plans/${id}`);
       } catch (err) {
-        console.error('Network error loading plan:', err);
-        setError('Failed to load training plan');
+        console.error("Network error loading plan:", err);
+        setError("Failed to load training plan");
         setLoading(false);
         return;
       }
-      
+
       if (!response.ok) {
         if (response.status === 404) {
-          setError('Training plan not found');
+          setError("Training plan not found");
         } else if (response.status === 403) {
-          setError('You do not have permission to view this plan');
+          setError("You do not have permission to view this plan");
         } else if (response.status === 401) {
-          setError('You must be logged in to view this plan');
+          setError("You must be logged in to view this plan");
         } else {
-          setError('Failed to load training plan');
+          setError("Failed to load training plan");
         }
         setLoading(false);
         return;
       }
-      
+
       const data = await response.json();
       setPlan(data.plan);
       setLoading(false);
@@ -70,7 +70,7 @@ function PlanViewContent() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Error</h1>
           <p className="text-gray-600 mb-6">{error}</p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push("/dashboard")}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
           >
             Back to Dashboard
@@ -86,7 +86,7 @@ function PlanViewContent() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <TrainingPlanView plan={plan} onBack={() => router.push('/dashboard')} />
+      <TrainingPlanView plan={plan} onBack={() => router.push("/dashboard")} />
     </div>
   );
 }

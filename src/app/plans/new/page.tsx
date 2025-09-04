@@ -1,21 +1,27 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import MainLayout from '@/components/layout/MainLayout';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import NewPlanForm from '@/components/plans/NewPlanForm';
-import PlanPreview from '@/components/plans/PlanPreview';
-import { PlanCreationService, CreateMarathonPlanInput, PlanWithRelations } from '@/services/PlanCreationService';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import MainLayout from "@/components/layout/MainLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import NewPlanForm from "@/components/plans/NewPlanForm";
+import PlanPreview from "@/components/plans/PlanPreview";
+import {
+  PlanCreationService,
+  CreateMarathonPlanInput,
+  PlanWithRelations,
+} from "@/services/PlanCreationService";
 
-type PageState = 'form' | 'preview';
+type PageState = "form" | "preview";
 
 function PlansNewPageContent() {
   const { user } = useAuth();
   const router = useRouter();
-  const [pageState, setPageState] = useState<PageState>('form');
-  const [generatedPlan, setGeneratedPlan] = useState<PlanWithRelations | null>(null);
+  const [pageState, setPageState] = useState<PageState>("form");
+  const [generatedPlan, setGeneratedPlan] = useState<PlanWithRelations | null>(
+    null
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -24,14 +30,14 @@ function PlansNewPageContent() {
   const handleFormSubmit = async (input: CreateMarathonPlanInput) => {
     const plan = await planService.createMarathonPlan(input);
     if (!plan) {
-      throw new Error('Failed to create plan');
+      throw new Error("Failed to create plan");
     }
     setGeneratedPlan(plan);
-    setPageState('preview');
+    setPageState("preview");
   };
 
   const handleTryAgain = () => {
-    setPageState('form');
+    setPageState("form");
     setGeneratedPlan(null);
     setCreateError(null);
   };
@@ -41,25 +47,25 @@ function PlansNewPageContent() {
 
     setIsCreating(true);
     setCreateError(null);
-    
+
     let response;
     try {
-      response = await fetch('/api/plans/create', {
-        method: 'POST',
+      response = await fetch("/api/plans/create", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(generatedPlan),
       });
     } catch (error) {
-      console.error('Network error saving plan:', error);
-      setCreateError('Failed to save training plan. Please try again.');
+      console.error("Network error saving plan:", error);
+      setCreateError("Failed to save training plan. Please try again.");
       setIsCreating(false);
       return;
     }
 
     if (!response.ok) {
-      setCreateError('Failed to save training plan. Please try again.');
+      setCreateError("Failed to save training plan. Please try again.");
       setIsCreating(false);
       return;
     }
@@ -68,22 +74,25 @@ function PlansNewPageContent() {
     if (data.success) {
       router.push(`/plans/${generatedPlan.id}`);
     } else {
-      setCreateError(data.error || 'Failed to save training plan. Please try again.');
+      setCreateError(
+        data.error || "Failed to save training plan. Please try again."
+      );
     }
-    
+
     setIsCreating(false);
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {pageState === 'form' && (
+      {pageState === "form" && (
         <div>
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Create New Training Plan
             </h1>
             <p className="text-gray-600">
-              Generate a personalized 18-week marathon training plan tailored to your goals.
+              Generate a personalized 18-week marathon training plan tailored to
+              your goals.
             </p>
           </div>
           <div className="flex justify-center">
@@ -92,17 +101,18 @@ function PlansNewPageContent() {
         </div>
       )}
 
-      {pageState === 'preview' && generatedPlan && (
+      {pageState === "preview" && generatedPlan && (
         <div>
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Review Your Training Plan
             </h1>
             <p className="text-gray-600">
-              Review the generated plan below. You can create it or try again with different parameters.
+              Review the generated plan below. You can create it or try again
+              with different parameters.
             </p>
           </div>
-          <PlanPreview 
+          <PlanPreview
             plan={generatedPlan}
             onCreate={handleCreatePlan}
             onTryAgain={handleTryAgain}
@@ -111,7 +121,6 @@ function PlansNewPageContent() {
           />
         </div>
       )}
-
     </div>
   );
 }

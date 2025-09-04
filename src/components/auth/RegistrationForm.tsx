@@ -59,7 +59,7 @@ export default function RegistrationForm() {
       console.log("[REGISTRATION FORM] Attempting signup with:", {
         email,
         hasPassword: !!password,
-        action: "signup"
+        action: "signup",
       });
 
       const result = await signIn("credentials", {
@@ -73,13 +73,15 @@ export default function RegistrationForm() {
         ok: result?.ok,
         error: result?.error,
         status: result?.status,
-        url: result?.url
+        url: result?.url,
       });
 
       if (result?.error) {
         console.log("[REGISTRATION FORM] Error during signup:", result.error);
         if (result.error.includes("User already exists")) {
-          setMessage("An account with this email already exists. Try signing in instead.");
+          setMessage(
+            "An account with this email already exists. Try signing in instead."
+          );
         } else {
           setMessage("Error creating account. Please try again.");
         }
@@ -169,16 +171,28 @@ export default function RegistrationForm() {
       </form>
 
       {message && (
-        <div className={`mt-4 p-3 rounded-md ${
-          message.includes("Error") || message.includes("do not match") || message.includes("already exists") || message.includes("required") || message.includes("must be")
-            ? "bg-red-50 border border-red-200"
-            : "bg-blue-50 border border-blue-200"
-        }`}>
-          <p className={`text-sm ${
-            message.includes("Error") || message.includes("do not match") || message.includes("already exists") || message.includes("required") || message.includes("must be")
-              ? "text-red-800"
-              : "text-blue-800"
-          }`}>
+        <div
+          className={`mt-4 p-3 rounded-md ${
+            message.includes("Error") ||
+            message.includes("do not match") ||
+            message.includes("already exists") ||
+            message.includes("required") ||
+            message.includes("must be")
+              ? "bg-red-50 border border-red-200"
+              : "bg-blue-50 border border-blue-200"
+          }`}
+        >
+          <p
+            className={`text-sm ${
+              message.includes("Error") ||
+              message.includes("do not match") ||
+              message.includes("already exists") ||
+              message.includes("required") ||
+              message.includes("must be")
+                ? "text-red-800"
+                : "text-blue-800"
+            }`}
+          >
             {message}
           </p>
         </div>
@@ -187,7 +201,10 @@ export default function RegistrationForm() {
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-600">
           Already have an account?{" "}
-          <a href="/sessions/create" className="text-blue-600 hover:text-blue-500">
+          <a
+            href="/sessions/create"
+            className="text-blue-600 hover:text-blue-500"
+          >
             Sign in here
           </a>
         </p>

@@ -14,7 +14,7 @@ const config: Config = {
   },
   testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
   transformIgnorePatterns: [
-    "node_modules/(?!(@auth/drizzle-adapter|drizzle-orm)/)"
+    "node_modules/(?!(@auth/drizzle-adapter|drizzle-orm)/)",
   ],
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",

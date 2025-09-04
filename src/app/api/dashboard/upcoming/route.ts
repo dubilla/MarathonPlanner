@@ -1,14 +1,17 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getFullTrainingPlan, getTrainingPlansByUserId } from '@/lib/db/queries';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import {
+  getFullTrainingPlan,
+  getTrainingPlansByUserId,
+} from "@/lib/db/queries";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user's training plans
@@ -43,7 +46,7 @@ export async function GET() {
               description: day.description,
               planName: plan.name,
               planId: plan.id,
-              weekNumber: week.weekNumber
+              weekNumber: week.weekNumber,
             });
           }
         }
@@ -51,13 +54,15 @@ export async function GET() {
     }
 
     // Sort by date
-    upcomingWorkouts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    upcomingWorkouts.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
     return NextResponse.json({ workouts: upcomingWorkouts });
   } catch (error) {
-    console.error('Failed to fetch upcoming workouts:', error);
+    console.error("Failed to fetch upcoming workouts:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch upcoming workouts' },
+      { error: "Failed to fetch upcoming workouts" },
       { status: 500 }
     );
   }

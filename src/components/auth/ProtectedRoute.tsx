@@ -9,7 +9,10 @@ interface ProtectedRouteProps {
   fallback?: ReactNode;
 }
 
-export default function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
+export default function ProtectedRoute({
+  children,
+  fallback,
+}: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 

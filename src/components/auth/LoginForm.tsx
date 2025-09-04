@@ -8,7 +8,9 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [authMode, setAuthMode] = useState<"password" | "magic-link">("password");
+  const [authMode, setAuthMode] = useState<"password" | "magic-link">(
+    "password"
+  );
 
   const isDatabaseConfigured = process.env.NEXT_PUBLIC_DB_CONFIGURED;
 
@@ -69,7 +71,7 @@ export default function LoginForm() {
       console.log("[LOGIN FORM] Attempting signin with:", {
         email,
         hasPassword: !!password,
-        action: "signin"
+        action: "signin",
       });
 
       const result = await signIn("credentials", {
@@ -83,7 +85,7 @@ export default function LoginForm() {
         ok: result?.ok,
         error: result?.error,
         status: result?.status,
-        url: result?.url
+        url: result?.url,
       });
 
       if (result?.error) {
@@ -218,16 +220,24 @@ export default function LoginForm() {
       )}
 
       {message && (
-        <div className={`mt-4 p-3 rounded-md ${
-          message.includes("Error") || message.includes("Invalid") || message.includes("required")
-            ? "bg-red-50 border border-red-200"
-            : "bg-blue-50 border border-blue-200"
-        }`}>
-          <p className={`text-sm ${
-            message.includes("Error") || message.includes("Invalid") || message.includes("required")
-              ? "text-red-800"
-              : "text-blue-800"
-          }`}>
+        <div
+          className={`mt-4 p-3 rounded-md ${
+            message.includes("Error") ||
+            message.includes("Invalid") ||
+            message.includes("required")
+              ? "bg-red-50 border border-red-200"
+              : "bg-blue-50 border border-blue-200"
+          }`}
+        >
+          <p
+            className={`text-sm ${
+              message.includes("Error") ||
+              message.includes("Invalid") ||
+              message.includes("required")
+                ? "text-red-800"
+                : "text-blue-800"
+            }`}
+          >
             {message}
           </p>
         </div>

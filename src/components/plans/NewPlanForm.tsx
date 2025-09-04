@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { CreateMarathonPlanInput } from '@/services/PlanCreationService';
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { CreateMarathonPlanInput } from "@/services/PlanCreationService";
 
 interface NewPlanFormProps {
   onSubmit?: (input: CreateMarathonPlanInput) => Promise<void>;
@@ -11,8 +11,8 @@ interface NewPlanFormProps {
 export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
   const { user, loading } = useAuth();
   const [formData, setFormData] = useState({
-    marathonDate: '',
-    longestWeeklyMileage: ''
+    marathonDate: "",
+    longestWeeklyMileage: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     if (!formData.marathonDate || !formData.longestWeeklyMileage) {
       return;
     }
@@ -45,10 +45,10 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
       await onSubmit({
         marathonDate,
         longestWeeklyMileage: parseInt(formData.longestWeeklyMileage),
-        userId: user.id
+        userId: user.id,
       });
     } catch {
-      setError('Failed to create plan. Please try again.');
+      setError("Failed to create plan. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -58,7 +58,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -69,13 +69,17 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
           Create Marathon Training Plan
         </h1>
         <p className="text-gray-600 text-sm">
-          This will create an 18-week training plan ending on your marathon date.
+          This will create an 18-week training plan ending on your marathon
+          date.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="marathonDate" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="marathonDate"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Marathon Date
           </label>
           <input
@@ -90,7 +94,10 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
         </div>
 
         <div>
-          <label htmlFor="longestWeeklyMileage" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="longestWeeklyMileage"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Peak Weekly Mileage (miles)
           </label>
           <input
@@ -121,7 +128,7 @@ export default function NewPlanForm({ onSubmit }: NewPlanFormProps) {
           disabled={isSubmitting}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
-          {isSubmitting ? 'Creating your training plan...' : 'Create Plan'}
+          {isSubmitting ? "Creating your training plan..." : "Create Plan"}
         </button>
       </form>
     </div>

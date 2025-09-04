@@ -13,12 +13,18 @@ import { PlanWithRelations } from "@/services/PlanCreationService";
 
 // User queries
 export const getUserByEmail = async (email: string) => {
-  const result = await db.select().from(nextAuthUsers).where(eq(nextAuthUsers.email, email));
+  const result = await db
+    .select()
+    .from(nextAuthUsers)
+    .where(eq(nextAuthUsers.email, email));
   return result[0] || null;
 };
 
 export const getUserById = async (id: string) => {
-  const result = await db.select().from(nextAuthUsers).where(eq(nextAuthUsers.id, id));
+  const result = await db
+    .select()
+    .from(nextAuthUsers)
+    .where(eq(nextAuthUsers.id, id));
   return result[0] || null;
 };
 
@@ -73,7 +79,9 @@ export const createTrainingDay = async (data: NewTrainingDay) => {
 };
 
 // Get full training plan with weeks and training days
-export const getFullTrainingPlan = async (id: string): Promise<PlanWithRelations | null> => {
+export const getFullTrainingPlan = async (
+  id: string
+): Promise<PlanWithRelations | null> => {
   try {
     // First get the plan
     const plan = await db
@@ -81,7 +89,7 @@ export const getFullTrainingPlan = async (id: string): Promise<PlanWithRelations
       .from(trainingPlans)
       .where(eq(trainingPlans.id, id))
       .limit(1);
-    
+
     if (!plan || plan.length === 0) {
       return null;
     }
@@ -95,8 +103,8 @@ export const getFullTrainingPlan = async (id: string): Promise<PlanWithRelations
 
     // Get all training days for all weeks
     const weekIds = weeks.map(w => w.id);
-    let trainingDaysForAllWeeks: typeof trainingDays.$inferSelect[] = [];
-    
+    let trainingDaysForAllWeeks: (typeof trainingDays.$inferSelect)[] = [];
+
     if (weekIds.length > 0) {
       // Fetch training days for all weeks at once
       const allDays = await Promise.all(
@@ -116,29 +124,34 @@ export const getFullTrainingPlan = async (id: string): Promise<PlanWithRelations
       ...plan[0],
       weeks: weeks.map(week => ({
         ...week,
-        trainingDays: trainingDaysForAllWeeks.filter(day => day.weekId === week.id)
-      }))
+        trainingDays: trainingDaysForAllWeeks.filter(
+          day => day.weekId === week.id
+        ),
+      })),
     };
 
     return fullPlan;
   } catch (error) {
-    console.error('Failed to fetch training plan:', error);
+    console.error("Failed to fetch training plan:", error);
     throw error;
   }
 };
 
 export const savePlan = async (plan: PlanWithRelations) => {
-  return await db.transaction(async (tx) => {
+  return await db.transaction(async tx => {
     // Save the main plan
-    const savedPlan = await tx.insert(trainingPlans).values({
-      id: plan.id,
-      userId: plan.userId,
-      name: plan.name,
-      description: plan.description,
-      marathonDate: plan.marathonDate,
-      goalTime: plan.goalTime,
-      totalWeeks: plan.totalWeeks,
-    }).returning();
+    const savedPlan = await tx
+      .insert(trainingPlans)
+      .values({
+        id: plan.id,
+        userId: plan.userId,
+        name: plan.name,
+        description: plan.description,
+        marathonDate: plan.marathonDate,
+        goalTime: plan.goalTime,
+        totalWeeks: plan.totalWeeks,
+      })
+      .returning();
 
     // Prepare all weeks data for batch insert
     const weeksData = plan.weeks.map(week => ({

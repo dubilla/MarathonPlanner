@@ -8,5 +8,13 @@
   "arrowParens": "avoid",
   "endOfLine": "lf",
   "bracketSpacing": true,
-  "bracketSameLine": false
+  "bracketSameLine": false,
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": {
+        "printWidth": 1
+      }
+    }
+  ]
 }

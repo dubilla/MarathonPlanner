@@ -12,7 +12,8 @@ export default function Footer() {
               <span className="text-xl font-bold">Marathon Planner</span>
             </div>
             <p className="text-gray-400">
-              Your training companion for marathon success. Create, track, and complete your marathon training plans.
+              Your training companion for marathon success. Create, track, and
+              complete your marathon training plans.
             </p>
           </div>
 
@@ -20,16 +21,28 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Navigation</h3>
             <div className="space-y-2">
-              <Link href="/" className="block text-gray-400 hover:text-white transition-colors">
+              <Link
+                href="/"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Home
               </Link>
-              <Link href="/dashboard" className="block text-gray-400 hover:text-white transition-colors">
+              <Link
+                href="/dashboard"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Dashboard
               </Link>
-              <Link href="/training-plans" className="block text-gray-400 hover:text-white transition-colors">
+              <Link
+                href="/training-plans"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Training Plans
               </Link>
-              <Link href="/auth" className="block text-gray-400 hover:text-white transition-colors">
+              <Link
+                href="/auth"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Sign In
               </Link>
             </div>
@@ -39,16 +52,28 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Support</h3>
             <div className="space-y-2">
-              <a href="mailto:support@marathonplanner.com" className="block text-gray-400 hover:text-white transition-colors">
+              <a
+                href="mailto:support@marathonplanner.com"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Contact Support
               </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
+              <a
+                href="#"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Help Center
               </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
+              <a
+                href="#"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Privacy Policy
               </a>
-              <a href="#" className="block text-gray-400 hover:text-white transition-colors">
+              <a
+                href="#"
+                className="block text-gray-400 hover:text-white transition-colors"
+              >
                 Terms of Service
               </a>
             </div>

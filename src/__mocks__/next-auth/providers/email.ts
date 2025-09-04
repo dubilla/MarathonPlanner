@@ -1,10 +1,10 @@
 export default jest.fn(() => ({
-  id: 'email',
-  type: 'email',
-  name: 'Email',
+  id: "email",
+  type: "email",
+  name: "Email",
   server: {},
-  from: '',
+  from: "",
   maxAge: 24 * 60 * 60,
   sendVerificationRequest: jest.fn(),
-  options: {}
+  options: {},
 }));

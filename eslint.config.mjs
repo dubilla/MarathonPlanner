@@ -10,7 +10,15 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
+  {
+    rules: {
+      // Whitespace rules (Prettier handles formatting, ESLint handles logic)
+      "no-trailing-spaces": "error",
+      "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 0 }],
+      "eol-last": ["error", "always"],
+    },
+  },
 ];
 
 export default eslintConfig;

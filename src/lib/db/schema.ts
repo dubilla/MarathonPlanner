@@ -13,7 +13,9 @@ import {
 
 // NextAuth.js required tables
 export const nextAuthUsers = pgTable("User", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").notNull(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
@@ -38,7 +40,7 @@ export const nextAuthAccounts = pgTable(
     id_token: text("id_token"),
     session_state: text("session_state"),
   },
-  (account) => ({
+  account => ({
     compoundKey: primaryKey({
       columns: [account.provider, account.providerAccountId],
     }),
@@ -60,7 +62,7 @@ export const nextAuthVerificationTokens = pgTable(
     token: text("token").notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (vt) => ({
+  vt => ({
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
   })
 );
@@ -101,8 +103,10 @@ export const trainingWeeks = pgTable(
       .references(() => trainingPlans.id, { onDelete: "cascade" }),
     weekNumber: integer("week_number").notNull(),
     startDate: date("start_date").notNull(),
-    targetMileage: decimal("target_mileage", { precision: 5, scale: 2 })
-      .notNull(),
+    targetMileage: decimal("target_mileage", {
+      precision: 5,
+      scale: 2,
+    }).notNull(),
     actualMileage: decimal("actual_mileage", { precision: 5, scale: 2 }),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -141,10 +145,7 @@ export const trainingDays = pgTable(
       "day_of_week_check",
       sql`${table.dayOfWeek} >= 1 AND ${table.dayOfWeek} <= 7`
     ),
-    milesCheck: check(
-      "miles_check",
-      sql`${table.miles} >= 0`
-    ),
+    milesCheck: check("miles_check", sql`${table.miles} >= 0`),
   })
 );
 
@@ -156,19 +157,25 @@ export const nextAuthUsersRelations = relations(nextAuthUsers, ({ many }) => ({
   trainingPlans: many(trainingPlans),
 }));
 
-export const nextAuthAccountsRelations = relations(nextAuthAccounts, ({ one }) => ({
-  user: one(nextAuthUsers, {
-    fields: [nextAuthAccounts.userId],
-    references: [nextAuthUsers.id],
-  }),
-}));
+export const nextAuthAccountsRelations = relations(
+  nextAuthAccounts,
+  ({ one }) => ({
+    user: one(nextAuthUsers, {
+      fields: [nextAuthAccounts.userId],
+      references: [nextAuthUsers.id],
+    }),
+  })
+);
 
-export const nextAuthSessionsRelations = relations(nextAuthSessions, ({ one }) => ({
-  user: one(nextAuthUsers, {
-    fields: [nextAuthSessions.userId],
-    references: [nextAuthUsers.id],
-  }),
-}));
+export const nextAuthSessionsRelations = relations(
+  nextAuthSessions,
+  ({ one }) => ({
+    user: one(nextAuthUsers, {
+      fields: [nextAuthSessions.userId],
+      references: [nextAuthUsers.id],
+    }),
+  })
+);
 
 // Legacy relations removed
 
@@ -208,7 +215,8 @@ export type NextAuthUser = typeof nextAuthUsers.$inferSelect;
 export type NewNextAuthUser = typeof nextAuthUsers.$inferInsert;
 export type NextAuthAccount = typeof nextAuthAccounts.$inferSelect;
 export type NextAuthSession = typeof nextAuthSessions.$inferSelect;
-export type NextAuthVerificationToken = typeof nextAuthVerificationTokens.$inferSelect;
+export type NextAuthVerificationToken =
+  typeof nextAuthVerificationTokens.$inferSelect;
 
 // Legacy types removed - use NextAuthUser instead
 

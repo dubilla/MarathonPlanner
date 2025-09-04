@@ -15,7 +15,8 @@ if (!connectionString && process.env.NODE_ENV !== "development") {
 
 // Use WebSocket-based connection pool for full PostgreSQL feature support
 const pool = new Pool({
-  connectionString: connectionString || "postgresql://user:password@localhost:5432/dummy"
+  connectionString:
+    connectionString || "postgresql://user:password@localhost:5432/dummy",
 });
 
 console.log("[DATABASE] Database connection initialized with WebSocket driver");

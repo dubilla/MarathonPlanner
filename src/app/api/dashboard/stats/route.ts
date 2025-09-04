@@ -1,14 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getTrainingPlansByUserId } from '@/lib/db/queries';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getTrainingPlansByUserId } from "@/lib/db/queries";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user's training plans
@@ -26,14 +26,14 @@ export async function GET() {
     const stats = {
       activePlans,
       weeklyMiles: 0,
-      currentStreak: 0
+      currentStreak: 0,
     };
 
     return NextResponse.json({ stats });
   } catch (error) {
-    console.error('Failed to fetch dashboard stats:', error);
+    console.error("Failed to fetch dashboard stats:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard stats' },
+      { error: "Failed to fetch dashboard stats" },
       { status: 500 }
     );
   }

@@ -20,7 +20,9 @@ describe("PlanCreationService", () => {
       });
 
       expect(plan.weeks).toHaveLength(18);
-      expect(plan.marathonDate).toEqual(marathonDate.toISOString().split('T')[0]);
+      expect(plan.marathonDate).toEqual(
+        marathonDate.toISOString().split("T")[0]
+      );
       expect(plan.totalWeeks).toBe(18);
     });
 
@@ -37,14 +39,14 @@ describe("PlanCreationService", () => {
 
       const week16 = plan.weeks.find(week => week.weekNumber === 16);
       expect(week16).toBeDefined();
-      
+
       const saturday = week16!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
       expect(saturday!.description).toBe("Long Run");
-      
+
       // Week 16 should have the peak weekly mileage
       expect(Number(week16!.targetMileage)).toBe(longestWeeklyMileage);
-      
+
       // Long run should be 20 miles for peak week when weekly mileage < 60
       expect(Number(saturday!.miles)).toBe(20);
     });
@@ -62,12 +64,14 @@ describe("PlanCreationService", () => {
 
       plan.weeks.forEach(week => {
         expect(week.trainingDays).toHaveLength(7);
-        
+
         const restDay = week.trainingDays.find(day => day.dayOfWeek === 7);
         expect(restDay).toBeDefined();
         expect(restDay!.description).toContain("Rest");
-        
-        const runningDays = week.trainingDays.filter(day => day.dayOfWeek !== 7);
+
+        const runningDays = week.trainingDays.filter(
+          day => day.dayOfWeek !== 7
+        );
         expect(runningDays).toHaveLength(6);
       });
     });
@@ -86,7 +90,7 @@ describe("PlanCreationService", () => {
       plan.weeks.forEach(week => {
         const tuesday = week.trainingDays.find(day => day.dayOfWeek === 2);
         const thursday = week.trainingDays.find(day => day.dayOfWeek === 4);
-        
+
         expect(tuesday).toBeDefined();
         expect(thursday).toBeDefined();
         expect(tuesday!.description).toContain("Workout");
@@ -131,9 +135,18 @@ describe("PlanCreationService", () => {
       expect(week17).toBeDefined();
       expect(week18).toBeDefined();
 
-      const week16TotalMiles = week16!.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
-      const week17TotalMiles = week17!.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
-      const week18TotalMiles = week18!.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0);
+      const week16TotalMiles = week16!.trainingDays.reduce(
+        (sum, day) => sum + Number(day.miles),
+        0
+      );
+      const week17TotalMiles = week17!.trainingDays.reduce(
+        (sum, day) => sum + Number(day.miles),
+        0
+      );
+      const week18TotalMiles = week18!.trainingDays.reduce(
+        (sum, day) => sum + Number(day.miles),
+        0
+      );
 
       expect(week17TotalMiles).toBeCloseTo(week16TotalMiles * 0.75, 1);
       expect(week18TotalMiles).toBeCloseTo(week16TotalMiles * 0.4, 1);
@@ -150,23 +163,29 @@ describe("PlanCreationService", () => {
         userId,
       });
 
-      const weeklyMileage = plan.weeks.slice(0, 16).map(week => 
-        week.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0)
-      );
+      const weeklyMileage = plan.weeks
+        .slice(0, 16)
+        .map(week =>
+          week.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0)
+        );
 
       // Week 16 should be the peak
       expect(weeklyMileage[15]).toBe(longestWeeklyMileage); // Week 16 (index 15)
-      
+
       // First week should be about 50% of peak
-      expect(weeklyMileage[0]).toBeGreaterThanOrEqual(longestWeeklyMileage * 0.45);
+      expect(weeklyMileage[0]).toBeGreaterThanOrEqual(
+        longestWeeklyMileage * 0.45
+      );
       expect(weeklyMileage[0]).toBeLessThanOrEqual(longestWeeklyMileage * 0.55);
-      
+
       // Should have general upward trend despite oscillation
       const firstHalf = weeklyMileage.slice(0, 8);
       const secondHalf = weeklyMileage.slice(8, 16);
-      const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-      const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-      
+      const firstHalfAvg =
+        firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const secondHalfAvg =
+        secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
       expect(secondHalfAvg).toBeGreaterThan(firstHalfAvg);
     });
 
@@ -189,11 +208,13 @@ describe("PlanCreationService", () => {
       // Long runs should generally increase (allowing for some oscillation)
       const firstHalf = longRunMiles.slice(0, 8);
       const secondHalf = longRunMiles.slice(8, 15); // Exclude week 16 since it has fixed distance
-      const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-      const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-      
+      const firstHalfAvg =
+        firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const secondHalfAvg =
+        secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
       expect(secondHalfAvg).toBeGreaterThan(firstHalfAvg);
-      
+
       // Peak long run (Week 16) should be 20 miles for weekly mileage < 60
       expect(longRunMiles[15]).toBe(20); // Week 16 (index 15)
     });
@@ -211,10 +232,10 @@ describe("PlanCreationService", () => {
 
       const week18 = plan.weeks.find(week => week.weekNumber === 18);
       expect(week18).toBeDefined();
-      
+
       const week18EndDate = new Date(week18!.startDate);
       week18EndDate.setDate(week18EndDate.getDate() + 6);
-      
+
       expect(week18EndDate.toDateString()).toBe(marathonDate.toDateString());
     });
 
@@ -231,7 +252,7 @@ describe("PlanCreationService", () => {
 
       const week16 = plan.weeks.find(week => week.weekNumber === 16);
       expect(week16).toBeDefined();
-      
+
       const saturday = week16!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
       expect(Number(saturday!.miles)).toBe(22);
@@ -250,7 +271,7 @@ describe("PlanCreationService", () => {
 
       const week16 = plan.weeks.find(week => week.weekNumber === 16);
       expect(week16).toBeDefined();
-      
+
       const saturday = week16!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
       expect(Number(saturday!.miles)).toBe(20);
@@ -269,7 +290,7 @@ describe("PlanCreationService", () => {
 
       const week16 = plan.weeks.find(week => week.weekNumber === 16);
       expect(week16).toBeDefined();
-      
+
       const saturday = week16!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
       expect(Number(saturday!.miles)).toBe(22);
@@ -288,7 +309,7 @@ describe("PlanCreationService", () => {
 
       const week17 = plan.weeks.find(week => week.weekNumber === 17);
       expect(week17).toBeDefined();
-      
+
       const saturday = week17!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
       expect(Number(saturday!.miles)).toBeLessThanOrEqual(14);
@@ -307,10 +328,10 @@ describe("PlanCreationService", () => {
 
       const week17 = plan.weeks.find(week => week.weekNumber === 17);
       expect(week17).toBeDefined();
-      
+
       const saturday = week17!.trainingDays.find(day => day.dayOfWeek === 6);
       expect(saturday).toBeDefined();
-      
+
       // For 40 mile peak, week 17 is 75% = 30 miles, 35% of that is ~10.5 miles
       expect(Number(saturday!.miles)).toBeLessThan(14);
       expect(Number(saturday!.miles)).toBeGreaterThan(8);

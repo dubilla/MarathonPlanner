@@ -29,31 +29,32 @@ export interface TrainingWeek {
   notes?: string;
   created_at: string;
   updated_at: string;
-  workouts?: Workout[];
+  training_days?: TrainingDay[];
 }
 
-export interface Workout {
+export interface TrainingDay {
   id: string;
   week_id: string;
   day_of_week: number;
-  workout_type: WorkoutType;
-  planned_distance: number;
-  planned_description: string;
-  actual_distance?: number;
+  date: string;
+  workout_id?: string;
+  actual_miles?: number;
   actual_notes?: string;
   completed: boolean;
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  workout?: Workout;
 }
 
-export type WorkoutType =
-  | "easy"
-  | "long"
-  | "tempo"
-  | "intervals"
-  | "rest"
-  | "cross_training";
+export interface Workout {
+  id: string;
+  miles: number;
+  description: string;
+  is_workout: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Database {
   public: {

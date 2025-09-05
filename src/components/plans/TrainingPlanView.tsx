@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlanWithRelations } from "@/services/PlanCreationService";
+import { TrainingDay } from "@/types";
 
 interface TrainingPlanViewProps {
   plan: PlanWithRelations;
@@ -17,6 +18,19 @@ interface WorkoutProgress {
 }
 
 type ViewMode = "weekly" | "calendar" | "stats";
+
+// Helper functions to work with new workout structure
+const getDayMiles = (day: TrainingDay): number => {
+  return day.workout?.miles ? Number(day.workout.miles) : 0;
+};
+
+const getDayDescription = (day: TrainingDay): string => {
+  return day.workout?.description || "Rest";
+};
+
+const isWorkoutDay = (day: TrainingDay): boolean => {
+  return day.workout?.isWorkout || false;
+};
 
 export default function TrainingPlanView({
   plan,
@@ -207,7 +221,7 @@ export default function TrainingPlanView({
       day => workoutProgress[day.id]?.completed
     ).length;
     const totalDays = week.trainingDays.filter(
-      day => Number(day.miles) > 0
+      day => getDayMiles(day) > 0
     ).length;
     const percentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
 
@@ -609,11 +623,14 @@ export default function TrainingPlanView({
                     <div className="p-6">
                       <div className="grid gap-4">
                         {week.trainingDays.map(day => {
-                          const isRest = Number(day.miles) === 0;
+                          const miles = getDayMiles(day);
+                          const description = getDayDescription(day);
+                          const isWorkout = isWorkoutDay(day);
+                          const isRest = miles === 0;
                           const dayProgress = workoutProgress[day.id];
                           const workoutDetails = getWorkoutDetails(
-                            day.description,
-                            Number(day.miles),
+                            description,
+                            miles,
                             week.weekNumber
                           );
                           const dayDate = new Date(day.date);
@@ -638,10 +655,15 @@ export default function TrainingPlanView({
                                       {formatDate(day.date)}
                                     </div>
                                     <span
-                                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getWorkoutTypeColor(day.description)}`}
+                                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getWorkoutTypeColor(description)}`}
                                     >
-                                      {day.description}
+                                      {description}
                                     </span>
+                                    {isWorkout && (
+                                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                        🏃‍♂️ Workout
+                                      </span>
+                                    )}
                                     {isPastDue && (
                                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                         Overdue
@@ -650,9 +672,7 @@ export default function TrainingPlanView({
                                   </div>
 
                                   <div className="text-lg font-semibold text-gray-900 mb-1">
-                                    {isRest
-                                      ? "Rest Day"
-                                      : `${Number(day.miles)} miles`}
+                                    {isRest ? "Rest Day" : `${miles} miles`}
                                   </div>
 
                                   {workoutDetails.pace && (
@@ -690,9 +710,7 @@ export default function TrainingPlanView({
                                           toggleWorkoutCompletion(
                                             day.id,
                                             e.target.checked,
-                                            e.target.checked
-                                              ? Number(day.miles)
-                                              : 0
+                                            e.target.checked ? miles : 0
                                           )
                                         }
                                         className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"

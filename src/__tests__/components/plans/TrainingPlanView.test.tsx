@@ -43,8 +43,18 @@ const mockPlan: PlanWithRelations = {
           date: "2024-01-01",
           miles: "4.00",
           description: "Easy Run",
+          workoutId: "workout-1-1",
+          completed: false,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
+          workout: {
+            id: "workout-1-1",
+            miles: 4.0,
+            description: "Easy Run",
+            isWorkout: false,
+            createdAt: new Date("2024-01-01"),
+            updatedAt: new Date("2024-01-01"),
+          },
         },
         {
           id: "day-1-2",
@@ -53,8 +63,18 @@ const mockPlan: PlanWithRelations = {
           date: "2024-01-02",
           miles: "5.00",
           description: "Workout",
+          workoutId: "workout-1-2",
+          completed: false,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
+          workout: {
+            id: "workout-1-2",
+            miles: 5.0,
+            description: "Workout",
+            isWorkout: true,
+            createdAt: new Date("2024-01-01"),
+            updatedAt: new Date("2024-01-01"),
+          },
         },
         {
           id: "day-1-7",
@@ -63,8 +83,11 @@ const mockPlan: PlanWithRelations = {
           date: "2024-01-07",
           miles: "0.00",
           description: "Rest",
+          workoutId: null,
+          completed: false,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
+          workout: null,
         },
       ],
     },
@@ -86,8 +109,18 @@ const mockPlan: PlanWithRelations = {
           date: "2024-04-15",
           miles: "8.00",
           description: "Easy Run",
+          workoutId: "workout-2-1",
+          completed: false,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
+          workout: {
+            id: "workout-2-1",
+            miles: 8.0,
+            description: "Easy Run",
+            isWorkout: false,
+            createdAt: new Date("2024-01-01"),
+            updatedAt: new Date("2024-01-01"),
+          },
         },
         {
           id: "day-2-6",
@@ -96,8 +129,18 @@ const mockPlan: PlanWithRelations = {
           date: "2024-04-20",
           miles: "22.00",
           description: "Long Run",
+          workoutId: "workout-2-6",
+          completed: false,
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
+          workout: {
+            id: "workout-2-6",
+            miles: 22.0,
+            description: "Long Run",
+            isWorkout: false,
+            createdAt: new Date("2024-01-01"),
+            updatedAt: new Date("2024-01-01"),
+          },
         },
       ],
     },
@@ -931,7 +974,9 @@ describe("TrainingPlanView", () => {
       ).toBeInTheDocument();
 
       // Should show duplicate/cancel buttons (there should be 2 - one in header, one in modal)
-      expect(screen.getAllByRole("button", { name: /duplicate plan/i })).toHaveLength(2);
+      expect(
+        screen.getAllByRole("button", { name: /duplicate plan/i })
+      ).toHaveLength(2);
       expect(
         screen.getByRole("button", { name: /cancel/i })
       ).toBeInTheDocument();
@@ -995,8 +1040,12 @@ describe("TrainingPlanView", () => {
       fireEvent.click(duplicateButton);
 
       // Get the modal's duplicate button (should be disabled initially)
-      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
-      const confirmDuplicateButton = duplicateButtons.find(button => button.hasAttribute('disabled'));
+      const duplicateButtons = screen.getAllByRole("button", {
+        name: /duplicate plan/i,
+      });
+      const confirmDuplicateButton = duplicateButtons.find(button =>
+        button.hasAttribute("disabled")
+      );
       expect(confirmDuplicateButton).toBeTruthy();
 
       // Should be disabled initially (no marathon date)
@@ -1020,8 +1069,12 @@ describe("TrainingPlanView", () => {
       fireEvent.change(nameField, { target: { value: "New Plan Name" } });
 
       // Should now be enabled - get the button again since DOM may have updated
-      const updatedButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
-      const updatedConfirmButton = updatedButtons.find(button => !button.hasAttribute('disabled'));
+      const updatedButtons = screen.getAllByRole("button", {
+        name: /duplicate plan/i,
+      });
+      const updatedConfirmButton = updatedButtons.find(
+        button => !button.hasAttribute("disabled")
+      );
       expect(updatedConfirmButton).toBeTruthy();
       expect(updatedConfirmButton).not.toBeDisabled();
     });
@@ -1149,7 +1202,9 @@ describe("TrainingPlanView", () => {
 
       // Should show error message
       await waitFor(() => {
-        expect(screen.getByText("Failed to duplicate plan")).toBeInTheDocument();
+        expect(
+          screen.getByText("Failed to duplicate plan")
+        ).toBeInTheDocument();
       });
 
       // Should remain in duplicate dialog

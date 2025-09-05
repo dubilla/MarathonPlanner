@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlanWithRelations } from "@/services/PlanCreationService";
+import { TrainingDay } from "@/types";
 
 interface PlanPreviewProps {
   plan: PlanWithRelations;
@@ -21,6 +22,19 @@ const dayNames = [
   "Saturday",
   "Sunday",
 ];
+
+// Helper functions to work with new workout structure
+const getDayMiles = (day: TrainingDay): number => {
+  return day.workout?.miles ? Number(day.workout.miles) : 0;
+};
+
+const getDayDescription = (day: TrainingDay): string => {
+  return day.workout?.description || "Rest";
+};
+
+const isWorkoutDay = (day: TrainingDay): boolean => {
+  return day.workout?.isWorkout || false;
+};
 
 export default function PlanPreview({
   plan,
@@ -44,11 +58,11 @@ export default function PlanPreview({
 
   const getWeekSummary = (week: (typeof plan.weeks)[0]) => {
     const totalMiles = week.trainingDays.reduce(
-      (sum, day) => sum + Number(day.miles),
+      (sum, day) => sum + getDayMiles(day),
       0
     );
     const longRunDay = week.trainingDays.find(day => day.dayOfWeek === 6);
-    const longRunMiles = longRunDay ? Number(longRunDay.miles) : 0;
+    const longRunMiles = longRunDay ? getDayMiles(longRunDay) : 0;
 
     let label = "";
     if (week.weekNumber === 16) {
@@ -227,15 +241,18 @@ export default function PlanPreview({
                             {dayNames[day.dayOfWeek]}
                           </div>
                           <div className="text-gray-600 mb-1">
-                            {Number(day.miles) === 0
+                            {getDayMiles(day) === 0
                               ? "Rest"
-                              : `${Number(day.miles)} miles`}
+                              : `${getDayMiles(day)} miles`}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {day.description === "Long Run" &&
+                            {getDayDescription(day) === "Long Run" &&
                             week.weekNumber === 18
                               ? "RACE!"
-                              : day.description}
+                              : getDayDescription(day)}
+                            {isWorkoutDay(day) && (
+                              <span className="ml-2 text-orange-600">🏃‍♂️</span>
+                            )}
                           </div>
                         </div>
                       ))}

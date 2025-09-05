@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   date,
   decimal,
   integer,
@@ -125,6 +126,22 @@ export const trainingWeeks = pgTable(
   })
 );
 
+// Workouts table
+export const workouts = pgTable(
+  "workouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    miles: decimal("miles", { precision: 5, scale: 2 }).notNull(),
+    description: text("description").notNull(),
+    isWorkout: boolean("is_workout").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  table => ({
+    milesCheck: check("miles_check", sql`${table.miles} >= 0`),
+  })
+);
+
 // Training days table
 export const trainingDays = pgTable(
   "training_days",
@@ -135,8 +152,13 @@ export const trainingDays = pgTable(
       .references(() => trainingWeeks.id, { onDelete: "cascade" }),
     dayOfWeek: integer("day_of_week").notNull(),
     date: date("date").notNull(),
-    miles: decimal("miles", { precision: 5, scale: 2 }).notNull(),
-    description: text("description").notNull(),
+    workoutId: uuid("workout_id").references(() => workouts.id, {
+      onDelete: "set null",
+    }),
+    actualMiles: decimal("actual_miles", { precision: 5, scale: 2 }),
+    actualNotes: text("actual_notes"),
+    completed: boolean("completed").default(false).notNull(),
+    completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -145,7 +167,10 @@ export const trainingDays = pgTable(
       "day_of_week_check",
       sql`${table.dayOfWeek} >= 1 AND ${table.dayOfWeek} <= 7`
     ),
-    milesCheck: check("miles_check", sql`${table.miles} >= 0`),
+    actualMilesCheck: check(
+      "actual_miles_check",
+      sql`${table.actualMiles} >= 0`
+    ),
   })
 );
 
@@ -202,10 +227,18 @@ export const trainingWeeksRelations = relations(
   })
 );
 
+export const workoutsRelations = relations(workouts, ({ many }) => ({
+  trainingDays: many(trainingDays),
+}));
+
 export const trainingDaysRelations = relations(trainingDays, ({ one }) => ({
   week: one(trainingWeeks, {
     fields: [trainingDays.weekId],
     references: [trainingWeeks.id],
+  }),
+  workout: one(workouts, {
+    fields: [trainingDays.workoutId],
+    references: [workouts.id],
   }),
 }));
 
@@ -225,6 +258,9 @@ export type NewTrainingPlan = typeof trainingPlans.$inferInsert;
 
 export type TrainingWeek = typeof trainingWeeks.$inferSelect;
 export type NewTrainingWeek = typeof trainingWeeks.$inferInsert;
+
+export type Workout = typeof workouts.$inferSelect;
+export type NewWorkout = typeof workouts.$inferInsert;
 
 export type TrainingDay = typeof trainingDays.$inferSelect;
 export type NewTrainingDay = typeof trainingDays.$inferInsert;

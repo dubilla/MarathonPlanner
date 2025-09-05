@@ -5,6 +5,7 @@ import {
   trainingPlans,
   trainingWeeks,
   trainingDays,
+  workouts,
   type NewTrainingPlan,
   type NewTrainingWeek,
   type NewTrainingDay,
@@ -101,17 +102,58 @@ export const getFullTrainingPlan = async (
       .where(eq(trainingWeeks.planId, id))
       .orderBy(trainingWeeks.weekNumber);
 
-    // Get all training days for all weeks
+    // Get all training days with their workouts for all weeks
     const weekIds = weeks.map(w => w.id);
-    let trainingDaysForAllWeeks: (typeof trainingDays.$inferSelect)[] = [];
+    let trainingDaysForAllWeeks: Array<{
+      id: string;
+      weekId: string;
+      dayOfWeek: number;
+      date: string;
+      workoutId: string | null;
+      actualMiles: string | null;
+      actualNotes: string | null;
+      completed: boolean;
+      completedAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+      workout: {
+        id: string;
+        miles: string;
+        description: string;
+        isWorkout: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+      } | null;
+    }[]> = [];
 
     if (weekIds.length > 0) {
-      // Fetch training days for all weeks at once
+      // Fetch training days with workouts for all weeks at once
       const allDays = await Promise.all(
         weekIds.map(weekId =>
           db
-            .select()
+            .select({
+              id: trainingDays.id,
+              weekId: trainingDays.weekId,
+              dayOfWeek: trainingDays.dayOfWeek,
+              date: trainingDays.date,
+              workoutId: trainingDays.workoutId,
+              actualMiles: trainingDays.actualMiles,
+              actualNotes: trainingDays.actualNotes,
+              completed: trainingDays.completed,
+              completedAt: trainingDays.completedAt,
+              createdAt: trainingDays.createdAt,
+              updatedAt: trainingDays.updatedAt,
+              workout: {
+                id: workouts.id,
+                miles: workouts.miles,
+                description: workouts.description,
+                isWorkout: workouts.isWorkout,
+                createdAt: workouts.createdAt,
+                updatedAt: workouts.updatedAt,
+              },
+            })
             .from(trainingDays)
+            .leftJoin(workouts, eq(trainingDays.workoutId, workouts.id))
             .where(eq(trainingDays.weekId, weekId))
             .orderBy(trainingDays.dayOfWeek)
         )

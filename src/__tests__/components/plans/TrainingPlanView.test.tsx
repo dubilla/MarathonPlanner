@@ -10,6 +10,10 @@ jest.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
+// Mock window.location
+delete (window as any).location;
+window.location = { href: "" } as any;
+
 const mockPlan: PlanWithRelations = {
   id: "test-plan-id",
   userId: "test-user-id",
@@ -886,6 +890,295 @@ describe("TrainingPlanView", () => {
       // Wait for completion
       await waitFor(() => {
         expect(mockOnBack).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe("Plan Duplication", () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("shows duplicate plan button", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      expect(duplicateButton).toBeInTheDocument();
+    });
+
+    it("opens duplicate dialog when duplicate button is clicked", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Should show duplication dialog
+      expect(screen.getByText("Duplicate Training Plan")).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: /plan name/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: /description/i })
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(/new marathon date/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: /goal time/i })
+      ).toBeInTheDocument();
+
+      // Should show duplicate/cancel buttons (there should be 2 - one in header, one in modal)
+      expect(screen.getAllByRole("button", { name: /duplicate plan/i })).toHaveLength(2);
+      expect(
+        screen.getByRole("button", { name: /cancel/i })
+      ).toBeInTheDocument();
+    });
+
+    it("pre-populates form fields with plan data and default name", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      const nameField = screen.getByRole("textbox", { name: /plan name/i });
+      const descriptionField = screen.getByRole("textbox", {
+        name: /description/i,
+      });
+
+      expect(nameField).toHaveValue("Test Marathon Training Plan (Copy)");
+      expect(descriptionField).toHaveValue(
+        "18-week marathon training plan ending on December 31, 2024"
+      );
+    });
+
+    it("shows goal time when plan has one", () => {
+      const planWithGoalTime = {
+        ...mockPlan,
+        goalTime: "3:30:00",
+      };
+
+      render(<TrainingPlanView plan={planWithGoalTime} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      const goalTimeField = screen.getByRole("textbox", { name: /goal time/i });
+      expect(goalTimeField).toHaveValue("3:30:00");
+    });
+
+    it("closes dialog when cancel button is clicked", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Dialog should be open
+      expect(screen.getByText("Duplicate Training Plan")).toBeInTheDocument();
+
+      // Click cancel
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      // Dialog should be closed
+      expect(
+        screen.queryByText("Duplicate Training Plan")
+      ).not.toBeInTheDocument();
+    });
+
+    it("disables duplicate button when required fields are empty", () => {
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Get the modal's duplicate button (should be disabled initially)
+      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const confirmDuplicateButton = duplicateButtons.find(button => button.hasAttribute('disabled'));
+      expect(confirmDuplicateButton).toBeTruthy();
+
+      // Should be disabled initially (no marathon date)
+      expect(confirmDuplicateButton).toBeDisabled();
+
+      // Clear name field
+      const nameField = screen.getByRole("textbox", { name: /plan name/i });
+      fireEvent.change(nameField, { target: { value: "" } });
+
+      // Should still be disabled (empty name and no marathon date)
+      expect(confirmDuplicateButton).toBeDisabled();
+
+      // Add marathon date but keep name empty
+      const marathonDateField = screen.getByLabelText(/new marathon date/i);
+      fireEvent.change(marathonDateField, { target: { value: "2025-01-01" } });
+
+      // Should still be disabled (empty name)
+      expect(confirmDuplicateButton).toBeDisabled();
+
+      // Add name
+      fireEvent.change(nameField, { target: { value: "New Plan Name" } });
+
+      // Should now be enabled - get the button again since DOM may have updated
+      const updatedButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const updatedConfirmButton = updatedButtons.find(button => !button.hasAttribute('disabled'));
+      expect(updatedConfirmButton).toBeTruthy();
+      expect(updatedConfirmButton).not.toBeDisabled();
+    });
+
+    it("calls duplicate API with correct parameters", async () => {
+      // Mock successful API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          plan: { id: "new-plan-id" },
+          message: "Plan duplicated successfully",
+        }),
+      });
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Fill out the form
+      const nameField = screen.getByRole("textbox", { name: /plan name/i });
+      const descriptionField = screen.getByRole("textbox", {
+        name: /description/i,
+      });
+      const marathonDateField = screen.getByLabelText(/new marathon date/i);
+      const goalTimeField = screen.getByRole("textbox", { name: /goal time/i });
+
+      fireEvent.change(nameField, { target: { value: "Duplicated Plan" } });
+      fireEvent.change(descriptionField, {
+        target: { value: "Duplicated plan description" },
+      });
+      fireEvent.change(marathonDateField, { target: { value: "2025-01-01" } });
+      fireEvent.change(goalTimeField, { target: { value: "3:25:00" } });
+
+      // Submit the form - get all buttons and click the last one (modal button)
+      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const confirmDuplicateButton = duplicateButtons[duplicateButtons.length - 1];
+      fireEvent.click(confirmDuplicateButton);
+
+      // Should make API call with correct data
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          `/api/plans/${mockPlan.id}/duplicate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: "Duplicated Plan",
+              description: "Duplicated plan description",
+              marathonDate: "2025-01-01",
+              goalTime: "3:25:00",
+            }),
+          }
+        );
+      });
+    });
+
+    it("shows loading state while duplicating", async () => {
+      // Mock delayed API response
+      (global.fetch as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise(resolve =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: async () => ({
+                    success: true,
+                    plan: { id: "new-plan-id" },
+                    message: "Plan duplicated successfully",
+                  }),
+                }),
+              100
+            )
+          )
+      );
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Fill required fields
+      const marathonDateField = screen.getByLabelText(/new marathon date/i);
+      fireEvent.change(marathonDateField, { target: { value: "2025-01-01" } });
+
+      // Get the modal's duplicate button (last one)
+      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const confirmDuplicateButton = duplicateButtons[duplicateButtons.length - 1];
+      fireEvent.click(confirmDuplicateButton);
+
+      // Should show loading state
+      expect(screen.getByText("Duplicating...")).toBeInTheDocument();
+      expect(confirmDuplicateButton).toBeDisabled();
+
+      // Wait for API call to complete (no need to test redirect)
+      await waitFor(() => {
+        expect(screen.queryByText("Duplicating...")).not.toBeInTheDocument();
+      });
+    });
+
+    it("handles API errors gracefully", async () => {
+      // Mock failed API response
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: "Failed to duplicate plan" }),
+      });
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Fill required fields
+      const marathonDateField = screen.getByLabelText(/new marathon date/i);
+      fireEvent.change(marathonDateField, { target: { value: "2025-01-01" } });
+
+      // Get the modal's duplicate button (last one)
+      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const confirmDuplicateButton = duplicateButtons[duplicateButtons.length - 1];
+      fireEvent.click(confirmDuplicateButton);
+
+      // Should show error message
+      await waitFor(() => {
+        expect(screen.getByText("Failed to duplicate plan")).toBeInTheDocument();
+      });
+
+      // Should remain in duplicate dialog
+      expect(screen.getByText("Duplicate Training Plan")).toBeInTheDocument();
+    });
+
+    it("handles network errors gracefully", async () => {
+      // Mock network error
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error("Network error")
+      );
+
+      render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+      const duplicateButton = screen.getByText("Duplicate Plan");
+      fireEvent.click(duplicateButton);
+
+      // Fill required fields
+      const marathonDateField = screen.getByLabelText(/new marathon date/i);
+      fireEvent.change(marathonDateField, { target: { value: "2025-01-01" } });
+
+      // Get the modal's duplicate button (last one)
+      const duplicateButtons = screen.getAllByRole("button", { name: /duplicate plan/i });
+      const confirmDuplicateButton = duplicateButtons[duplicateButtons.length - 1];
+      fireEvent.click(confirmDuplicateButton);
+
+      // Should show network error message
+      await waitFor(() => {
+        expect(screen.getByText("Network error occurred")).toBeInTheDocument();
       });
     });
   });

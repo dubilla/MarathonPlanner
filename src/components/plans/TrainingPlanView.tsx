@@ -40,6 +40,15 @@ export default function TrainingPlanView({
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateForm, setDuplicateForm] = useState({
+    name: `${plan.name} (Copy)`,
+    description: plan.description || "",
+    marathonDate: "",
+    goalTime: plan.goalTime || "",
+  });
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!editedPlan.name.trim()) {
@@ -129,6 +138,56 @@ export default function TrainingPlanView({
     setShowDeleteDialog(false);
     setDeleteConfirmation("");
     setDeleteError(null);
+  };
+
+  const handleDuplicate = async () => {
+    if (!duplicateForm.name.trim()) {
+      setDuplicateError("Plan name is required");
+      return;
+    }
+
+    if (!duplicateForm.marathonDate) {
+      setDuplicateError("Marathon date is required");
+      return;
+    }
+
+    setIsDuplicating(true);
+    setDuplicateError(null);
+
+    try {
+      const response = await fetch(`/api/plans/${plan.id}/duplicate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(duplicateForm),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setDuplicateError(errorData.error || "Failed to duplicate plan");
+        return;
+      }
+
+      const data = await response.json();
+      // Redirect to the new duplicated plan
+      window.location.href = `/plans/${data.plan.id}`;
+    } catch {
+      setDuplicateError("Network error occurred");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const handleDuplicateCancel = () => {
+    setShowDuplicateDialog(false);
+    setDuplicateForm({
+      name: `${plan.name} (Copy)`,
+      description: plan.description || "",
+      marathonDate: "",
+      goalTime: plan.goalTime || "",
+    });
+    setDuplicateError(null);
   };
 
   const getCurrentWeek = () => {
@@ -397,6 +456,12 @@ export default function TrainingPlanView({
                 className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-md transition-colors"
               >
                 Edit Plan
+              </button>
+              <button
+                onClick={() => setShowDuplicateDialog(true)}
+                className="bg-green-100 hover:bg-green-200 text-green-700 font-medium py-2 px-4 rounded-md transition-colors"
+              >
+                Duplicate Plan
               </button>
               <button
                 onClick={() => setShowDeleteDialog(true)}
@@ -722,6 +787,140 @@ export default function TrainingPlanView({
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Plan Dialog */}
+      {showDuplicateDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Duplicate Training Plan
+              </h3>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label
+                  htmlFor="duplicate-plan-name"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Plan Name
+                </label>
+                <input
+                  id="duplicate-plan-name"
+                  type="text"
+                  value={duplicateForm.name}
+                  onChange={e =>
+                    setDuplicateForm(prev => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter plan name"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="duplicate-plan-description"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Description (optional)
+                </label>
+                <textarea
+                  id="duplicate-plan-description"
+                  value={duplicateForm.description}
+                  onChange={e =>
+                    setDuplicateForm(prev => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  rows={2}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter plan description"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="duplicate-marathon-date"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  New Marathon Date
+                </label>
+                <input
+                  id="duplicate-marathon-date"
+                  type="date"
+                  value={duplicateForm.marathonDate}
+                  onChange={e =>
+                    setDuplicateForm(prev => ({
+                      ...prev,
+                      marathonDate: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="duplicate-goal-time"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Goal Time (optional)
+                </label>
+                <input
+                  id="duplicate-goal-time"
+                  type="text"
+                  value={duplicateForm.goalTime}
+                  onChange={e =>
+                    setDuplicateForm(prev => ({
+                      ...prev,
+                      goalTime: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., 3:30:00"
+                />
+              </div>
+
+              {duplicateError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
+                  {duplicateError}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+              <button
+                onClick={handleDuplicateCancel}
+                disabled={isDuplicating}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDuplicate}
+                disabled={
+                  isDuplicating ||
+                  !duplicateForm.name.trim() ||
+                  !duplicateForm.marathonDate
+                }
+                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {isDuplicating && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                <span>
+                  {isDuplicating ? "Duplicating..." : "Duplicate Plan"}
+                </span>
+              </button>
             </div>
           </div>
         </div>

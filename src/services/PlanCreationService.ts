@@ -156,16 +156,23 @@ export class PlanCreationService {
     const dayDate = new Date(weekStartDate);
     dayDate.setDate(dayDate.getDate() + (dayOfWeek - 1));
 
+    // Create training day with legacy miles/description for savePlan compatibility
     return {
       id: crypto.randomUUID(),
       weekId,
       dayOfWeek,
       date: dayDate.toISOString().split("T")[0],
-      miles: miles.toFixed(2),
-      description,
+      workoutId: null,
+      actualMiles: null,
+      actualNotes: null,
+      completed: false,
+      completedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+      // Legacy properties for savePlan function compatibility
+      miles: miles.toFixed(2),
+      description,
+    } as TrainingDay;
   }
 
   private calculateWeeklyMileage(

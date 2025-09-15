@@ -25,15 +25,33 @@ const dayNames = [
 
 // Helper functions to work with new workout structure
 const getDayMiles = (day: TrainingDay): number => {
-  return day.workout?.miles ? Number(day.workout.miles) : 0;
+  if (day.workout?.miles) {
+    return Number(day.workout.miles);
+  }
+  // Fallback for legacy format
+  return Number((day as any).miles || 0);
 };
 
 const getDayDescription = (day: TrainingDay): string => {
-  return day.workout?.description || "Rest";
+  if (day.workout?.description) {
+    return day.workout.description;
+  }
+  // Fallback for legacy format
+  return (day as any).description || "Rest";
 };
 
 const isWorkoutDay = (day: TrainingDay): boolean => {
-  return day.workout?.isWorkout || false;
+  if (day.workout?.isWorkout !== undefined) {
+    return day.workout.isWorkout;
+  }
+  // Fallback for legacy format or check description
+  const description = (day as any).description || "";
+  return (
+    description.toLowerCase().includes("workout") ||
+    description.toLowerCase().includes("tempo") ||
+    description.toLowerCase().includes("interval") ||
+    false
+  );
 };
 
 export default function PlanPreview({

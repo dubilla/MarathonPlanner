@@ -1,4 +1,5 @@
 import { eq, desc } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { db } from ".";
 import {
   nextAuthUsers,
@@ -14,171 +15,132 @@ import { PlanWithRelations } from "@/services/PlanCreationService";
 
 // User queries
 export const getUserByEmail = async (email: string) => {
-  const result = await db
-    .select()
-    .from(nextAuthUsers)
-    .where(eq(nextAuthUsers.email, email));
-  return result[0] || null;
+  const users = await db.query.nextAuthUsers.findMany({
+    where: eq(nextAuthUsers.email, email),
+  });
+  return users[0];
 };
 
-export const getUserById = async (id: string) => {
-  const result = await db
-    .select()
-    .from(nextAuthUsers)
-    .where(eq(nextAuthUsers.id, id));
-  return result[0] || null;
+export const createUser = async (userData: {
+  email: string;
+  name?: string;
+}) => {
+  const newUser = await db
+    .insert(nextAuthUsers)
+    .values({
+      id: crypto.randomUUID(),
+      email: userData.email,
+      name: userData.name || null,
+    })
+    .returning();
+
+  return newUser[0];
 };
 
 // Training plan queries
 export const getTrainingPlansByUserId = async (userId: string) => {
-  return await db
-    .select()
-    .from(trainingPlans)
-    .where(eq(trainingPlans.userId, userId))
-    .orderBy(desc(trainingPlans.createdAt));
+  return await db.query.trainingPlans.findMany({
+    where: eq(trainingPlans.userId, userId),
+    orderBy: [desc(trainingPlans.createdAt)],
+  });
 };
 
-export const getTrainingPlanById = async (id: string) => {
-  const result = await db
-    .select()
-    .from(trainingPlans)
-    .where(eq(trainingPlans.id, id));
-  return result[0] || null;
+export const getTrainingPlanById = async (planId: string) => {
+  return await db.query.trainingPlans.findFirst({
+    where: eq(trainingPlans.id, planId),
+  });
 };
 
-export const createTrainingPlan = async (data: NewTrainingPlan) => {
-  const result = await db.insert(trainingPlans).values(data).returning();
-  return result[0];
-};
-
-// Training week queries
-export const getTrainingWeeksByPlanId = async (planId: string) => {
-  return await db
-    .select()
-    .from(trainingWeeks)
-    .where(eq(trainingWeeks.planId, planId))
-    .orderBy(trainingWeeks.weekNumber);
-};
-
-export const createTrainingWeek = async (data: NewTrainingWeek) => {
-  const result = await db.insert(trainingWeeks).values(data).returning();
-  return result[0];
-};
-
-// Training day queries
-export const getTrainingDaysByWeekId = async (weekId: string) => {
-  return await db
-    .select()
-    .from(trainingDays)
-    .where(eq(trainingDays.weekId, weekId))
-    .orderBy(trainingDays.dayOfWeek);
-};
-
-export const createTrainingDay = async (data: NewTrainingDay) => {
-  const result = await db.insert(trainingDays).values(data).returning();
-  return result[0];
-};
-
-// Get full training plan with weeks and training days
+// Get full training plan with all related data
 export const getFullTrainingPlan = async (
-  id: string
+  planId: string
 ): Promise<PlanWithRelations | null> => {
-  try {
-    // First get the plan
-    const plan = await db
-      .select()
-      .from(trainingPlans)
-      .where(eq(trainingPlans.id, id))
-      .limit(1);
+  const plan = await db.query.trainingPlans.findFirst({
+    where: eq(trainingPlans.id, planId),
+    with: {
+      weeks: {
+        with: {
+          trainingDays: {
+            with: {
+              workout: true,
+            },
+          },
+        },
+      },
+    },
+  });
 
-    if (!plan || plan.length === 0) {
-      return null;
-    }
-
-    // Then get all weeks for this plan
-    const weeks = await db
-      .select()
-      .from(trainingWeeks)
-      .where(eq(trainingWeeks.planId, id))
-      .orderBy(trainingWeeks.weekNumber);
-
-    // Get all training days with their workouts for all weeks
-    const weekIds = weeks.map(w => w.id);
-    let trainingDaysForAllWeeks: Array<{
-      id: string;
-      weekId: string;
-      dayOfWeek: number;
-      date: string;
-      workoutId: string | null;
-      actualMiles: string | null;
-      actualNotes: string | null;
-      completed: boolean;
-      completedAt: Date | null;
-      createdAt: Date;
-      updatedAt: Date;
-      workout: {
-        id: string;
-        miles: string;
-        description: string;
-        isWorkout: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-      } | null;
-    }[]> = [];
-
-    if (weekIds.length > 0) {
-      // Fetch training days with workouts for all weeks at once
-      const allDays = await Promise.all(
-        weekIds.map(weekId =>
-          db
-            .select({
-              id: trainingDays.id,
-              weekId: trainingDays.weekId,
-              dayOfWeek: trainingDays.dayOfWeek,
-              date: trainingDays.date,
-              workoutId: trainingDays.workoutId,
-              actualMiles: trainingDays.actualMiles,
-              actualNotes: trainingDays.actualNotes,
-              completed: trainingDays.completed,
-              completedAt: trainingDays.completedAt,
-              createdAt: trainingDays.createdAt,
-              updatedAt: trainingDays.updatedAt,
-              workout: {
-                id: workouts.id,
-                miles: workouts.miles,
-                description: workouts.description,
-                isWorkout: workouts.isWorkout,
-                createdAt: workouts.createdAt,
-                updatedAt: workouts.updatedAt,
-              },
-            })
-            .from(trainingDays)
-            .leftJoin(workouts, eq(trainingDays.workoutId, workouts.id))
-            .where(eq(trainingDays.weekId, weekId))
-            .orderBy(trainingDays.dayOfWeek)
-        )
-      );
-      trainingDaysForAllWeeks = allDays.flat();
-    }
-
-    // Assemble the full plan structure
-    const fullPlan: PlanWithRelations = {
-      ...plan[0],
-      weeks: weeks.map(week => ({
-        ...week,
-        trainingDays: trainingDaysForAllWeeks.filter(
-          day => day.weekId === week.id
-        ),
-      })),
-    };
-
-    return fullPlan;
-  } catch (error) {
-    console.error("Failed to fetch training plan:", error);
-    throw error;
+  if (!plan) {
+    return null;
   }
+
+  return plan as PlanWithRelations;
 };
 
+export const createTrainingPlan = async (planData: NewTrainingPlan) => {
+  const newPlan = await db.insert(trainingPlans).values(planData).returning();
+  return newPlan[0];
+};
+
+export const deleteTrainingPlan = async (planId: string) => {
+  const deletedPlan = await db
+    .delete(trainingPlans)
+    .where(eq(trainingPlans.id, planId))
+    .returning();
+  return deletedPlan[0];
+};
+
+export const createTrainingWeek = async (weekData: NewTrainingWeek) => {
+  const newWeek = await db.insert(trainingWeeks).values(weekData).returning();
+  return newWeek[0];
+};
+
+export const createTrainingDay = async (dayData: NewTrainingDay) => {
+  const newDay = await db.insert(trainingDays).values(dayData).returning();
+  return newDay[0];
+};
+
+export const updateTrainingPlan = async (
+  planId: string,
+  updates: Partial<NewTrainingPlan>
+) => {
+  const updatedPlan = await db
+    .update(trainingPlans)
+    .set(updates)
+    .where(eq(trainingPlans.id, planId))
+    .returning();
+  return updatedPlan[0];
+};
+
+// Get stats for dashboard
+export const getTrainingStats = async (userId: string) => {
+  const plans = await db.query.trainingPlans.findMany({
+    where: eq(trainingPlans.userId, userId),
+  });
+
+  return {
+    totalPlans: plans.length,
+    activePlans: plans.length, // For now, all plans are considered active
+    completedWorkouts: 0, // This would need to be calculated based on completed training days
+    totalMiles: 0, // This would need to be calculated based on actual miles logged
+  };
+};
+
+// Get recent activity for dashboard
+export const getRecentActivity = async (userId: string) => {
+  // This would return recent training day completions, plan creations, etc.
+  // For now, return empty array
+  return [];
+};
+
+// Get upcoming workouts for dashboard
+export const getUpcomingWorkouts = async (userId: string) => {
+  // This would return upcoming training days based on current date
+  // For now, return empty array
+  return [];
+};
+
+// Batch save entire training plan with all weeks and days
 export const savePlan = async (plan: PlanWithRelations) => {
   return await db.transaction(async tx => {
     // Save the main plan
@@ -189,20 +151,22 @@ export const savePlan = async (plan: PlanWithRelations) => {
         userId: plan.userId,
         name: plan.name,
         description: plan.description,
-        marathonDate: plan.marathonDate,
+        marathonDate: new Date(plan.marathonDate),
         goalTime: plan.goalTime,
         totalWeeks: plan.totalWeeks,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
-    // Prepare all weeks data for batch insert
+    // Prepare weeks data
     const weeksData = plan.weeks.map(week => ({
       id: week.id,
       planId: plan.id,
       weekNumber: week.weekNumber,
-      startDate: week.startDate,
-      targetMileage: week.targetMileage,
-      actualMileage: week.actualMileage,
+      startDate: new Date(week.startDate),
+      targetMileage: week.targetMileage.toString(),
+      actualMileage: week.actualMileage?.toString() || null,
       notes: week.notes,
     }));
 
@@ -211,45 +175,70 @@ export const savePlan = async (plan: PlanWithRelations) => {
       await tx.insert(trainingWeeks).values(weeksData);
     }
 
-    // Prepare all training days data for batch insert
-    const daysData = plan.weeks.flatMap(week =>
-      week.trainingDays.map(day => ({
-        id: day.id,
-        weekId: week.id,
-        dayOfWeek: Number(day.dayOfWeek),
-        date: day.date,
-        miles: day.miles,
-        description: day.description,
-      }))
-    );
+    // Prepare workout data for days with miles > 0
+    const workoutsData: any[] = [];
+    const daysData: any[] = [];
 
-    // Batch insert all training days
+    plan.weeks.forEach(week => {
+      week.trainingDays.forEach((day: any) => {
+        // Create workout record for non-rest days
+        if (day.miles && Number(day.miles) > 0) {
+          const workoutId = randomUUID();
+          workoutsData.push({
+            id: workoutId,
+            miles: day.miles,
+            description: day.description,
+            isWorkout:
+              day.description?.toLowerCase().includes("workout") ||
+              day.description?.toLowerCase().includes("tempo") ||
+              day.description?.toLowerCase().includes("long run"),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          // Create training day linked to workout
+          daysData.push({
+            id: day.id,
+            weekId: week.id,
+            dayOfWeek: Number(day.dayOfWeek),
+            date: day.date,
+            workoutId,
+            actualMiles: null,
+            actualNotes: null,
+            completed: false,
+            completedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        } else {
+          // Create rest day without workout
+          daysData.push({
+            id: day.id,
+            weekId: week.id,
+            dayOfWeek: Number(day.dayOfWeek),
+            date: day.date,
+            workoutId: null,
+            actualMiles: null,
+            actualNotes: null,
+            completed: false,
+            completedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      });
+    });
+
+    // Batch insert workouts first
+    if (workoutsData.length > 0) {
+      await tx.insert(workouts).values(workoutsData);
+    }
+
+    // Then batch insert training days
     if (daysData.length > 0) {
       await tx.insert(trainingDays).values(daysData);
     }
 
     return savedPlan[0];
   });
-};
-
-// Get all public training plans (for community features)
-export const getPublicTrainingPlans = async (limit = 20) => {
-  return await db
-    .select({
-      id: trainingPlans.id,
-      name: trainingPlans.name,
-      description: trainingPlans.description,
-      marathonDate: trainingPlans.marathonDate,
-      goalTime: trainingPlans.goalTime,
-      totalWeeks: trainingPlans.totalWeeks,
-      createdAt: trainingPlans.createdAt,
-      user: {
-        id: nextAuthUsers.id,
-        name: nextAuthUsers.name,
-      },
-    })
-    .from(trainingPlans)
-    .leftJoin(nextAuthUsers, eq(trainingPlans.userId, nextAuthUsers.id))
-    .orderBy(desc(trainingPlans.createdAt))
-    .limit(limit);
 };

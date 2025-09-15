@@ -88,11 +88,11 @@ describe("Plan Deletion Integration", () => {
     // Verify confirmation dialog appears
     expect(screen.getByText("Delete Training Plan")).toBeInTheDocument();
     expect(
-      screen.getByText("This action cannot be undone")
+      screen.getByText(/This action cannot be undone/i)
     ).toBeInTheDocument();
 
     // Enter plan name for confirmation
-    const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+    const confirmationInput = screen.getByPlaceholderText(mockPlan.name);
     fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
 
     // Verify delete button is enabled
@@ -135,7 +135,7 @@ describe("Plan Deletion Integration", () => {
     fireEvent.click(deleteButton);
 
     // Enter plan name and confirm
-    const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+    const confirmationInput = screen.getByPlaceholderText(mockPlan.name);
     fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
 
     const allDeleteButtons = screen.getAllByRole("button", {
@@ -169,7 +169,7 @@ describe("Plan Deletion Integration", () => {
     const deleteButton = screen.getByText("Delete Plan");
     fireEvent.click(deleteButton);
 
-    const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+    const confirmationInput = screen.getByPlaceholderText(mockPlan.name);
     fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
 
     const allDeleteButtons = screen.getAllByRole("button", {
@@ -202,7 +202,7 @@ describe("Plan Deletion Integration", () => {
     const deleteButton = screen.getByText("Delete Plan");
     fireEvent.click(deleteButton);
 
-    const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+    const confirmationInput = screen.getByPlaceholderText(mockPlan.name);
     fireEvent.change(confirmationInput, { target: { value: mockPlan.name } });
 
     const allDeleteButtons = screen.getAllByRole("button", {
@@ -227,7 +227,7 @@ describe("Plan Deletion Integration", () => {
     fireEvent.click(deleteButton);
 
     // Enter incorrect name
-    const confirmationInput = screen.getByPlaceholderText("Enter plan name");
+    const confirmationInput = screen.getByPlaceholderText(mockPlan.name);
     fireEvent.change(confirmationInput, {
       target: { value: "Wrong Plan Name" },
     });

@@ -10,6 +10,9 @@ const updateTrainingDaySchema = z.object({
   miles: z.number().min(0).optional(),
   description: z.string().optional(),
   isWorkout: z.boolean().optional(),
+  actualMiles: z.number().min(0).optional(),
+  actualNotes: z.string().optional(),
+  completed: z.boolean().optional(),
 });
 
 export async function PUT(
@@ -104,6 +107,30 @@ export async function PUT(
           })
           .where(eq(trainingDays.id, id));
       }
+    }
+
+    // Update actual miles, notes, and completion status
+    if (
+      validatedData.actualMiles !== undefined ||
+      validatedData.actualNotes !== undefined ||
+      validatedData.completed !== undefined
+    ) {
+      await db
+        .update(trainingDays)
+        .set({
+          ...(validatedData.actualMiles !== undefined && {
+            actualMiles: validatedData.actualMiles.toString(),
+          }),
+          ...(validatedData.actualNotes !== undefined && {
+            actualNotes: validatedData.actualNotes,
+          }),
+          ...(validatedData.completed !== undefined && {
+            completed: validatedData.completed,
+            completedAt: validatedData.completed ? new Date() : null,
+          }),
+          updatedAt: new Date(),
+        })
+        .where(eq(trainingDays.id, id));
     }
 
     // Get the updated training day with workout details

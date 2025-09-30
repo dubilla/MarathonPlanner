@@ -9,11 +9,14 @@ import { getServerSession } from "next-auth/next";
 global.Request = class Request {
   constructor(
     public url: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public init?: any
   ) {}
   public json = async () => (this.init?.body ? JSON.parse(this.init.body) : {});
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.Headers = class Headers {} as any;
 
 jest.mock("next-auth/next");
@@ -44,11 +47,13 @@ describe("PUT /api/training-days/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Set up the mock db structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockDb.query as any) = {
       trainingDays: {
         findFirst: jest.fn(),
       },
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockDb.update as any) = jest.fn(() => ({
       set: jest.fn(() => ({
         where: jest.fn(() => ({
@@ -56,6 +61,7 @@ describe("PUT /api/training-days/[id]", () => {
         })),
       })),
     }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockDb.insert as any) = jest.fn(() => ({
       values: jest.fn(() => ({
         returning: jest.fn(),
@@ -360,6 +366,173 @@ describe("PUT /api/training-days/[id]", () => {
         miles: 0,
         description: "Rest Day",
         isWorkout: false,
+      }),
+    });
+
+    const response = await PUT(request, { params: { id: "day1" } });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+
+  it("should update actual miles and notes for a training day", async () => {
+    mockGetServerSession.mockResolvedValueOnce({
+      user: { id: "user1", email: "test@example.com" },
+    });
+
+    const mockTrainingDay = {
+      id: "day1",
+      workoutId: "workout1",
+      week: {
+        plan: {
+          userId: "user1",
+        },
+      },
+      workout: {
+        id: "workout1",
+        miles: "5",
+        description: "Easy Run",
+        isWorkout: false,
+      },
+      actualMiles: null,
+      actualNotes: null,
+      completed: false,
+    };
+
+    mockDb.query.trainingDays.findFirst
+      .mockResolvedValueOnce(mockTrainingDay)
+      .mockResolvedValueOnce({
+        ...mockTrainingDay,
+        actualMiles: "5.5",
+        actualNotes: "Felt great, maintained steady pace",
+        completed: true,
+        completedAt: new Date(),
+      });
+
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    const request = new NextRequest("http://localhost/api/training-days/day1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actualMiles: 5.5,
+        actualNotes: "Felt great, maintained steady pace",
+        completed: true,
+      }),
+    });
+
+    const response = await PUT(request, { params: { id: "day1" } });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockDb.update).toHaveBeenCalled();
+  });
+
+  it("should mark training day as completed with timestamp", async () => {
+    mockGetServerSession.mockResolvedValueOnce({
+      user: { id: "user1", email: "test@example.com" },
+    });
+
+    const mockTrainingDay = {
+      id: "day1",
+      workoutId: "workout1",
+      week: {
+        plan: {
+          userId: "user1",
+        },
+      },
+      workout: {
+        id: "workout1",
+        miles: "10",
+        description: "Long Run",
+        isWorkout: false,
+      },
+      completed: false,
+      completedAt: null,
+    };
+
+    const now = new Date();
+    mockDb.query.trainingDays.findFirst
+      .mockResolvedValueOnce(mockTrainingDay)
+      .mockResolvedValueOnce({
+        ...mockTrainingDay,
+        actualMiles: "10.2",
+        actualNotes: "Good long run, legs felt strong",
+        completed: true,
+        completedAt: now,
+      });
+
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    const request = new NextRequest("http://localhost/api/training-days/day1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actualMiles: 10.2,
+        actualNotes: "Good long run, legs felt strong",
+        completed: true,
+      }),
+    });
+
+    const response = await PUT(request, { params: { id: "day1" } });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+
+  it("should allow updating only actual notes without miles", async () => {
+    mockGetServerSession.mockResolvedValueOnce({
+      user: { id: "user1", email: "test@example.com" },
+    });
+
+    const mockTrainingDay = {
+      id: "day1",
+      workoutId: "workout1",
+      week: {
+        plan: {
+          userId: "user1",
+        },
+      },
+      workout: {
+        id: "workout1",
+        miles: "6",
+        description: "Tempo Run",
+        isWorkout: true,
+      },
+      actualMiles: "6",
+      actualNotes: null,
+      completed: true,
+    };
+
+    mockDb.query.trainingDays.findFirst
+      .mockResolvedValueOnce(mockTrainingDay)
+      .mockResolvedValueOnce({
+        ...mockTrainingDay,
+        actualNotes: "Tempo pace felt challenging but manageable",
+      });
+
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    const request = new NextRequest("http://localhost/api/training-days/day1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actualNotes: "Tempo pace felt challenging but manageable",
       }),
     });
 

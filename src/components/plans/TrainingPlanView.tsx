@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PlanWithRelations } from "@/services/PlanCreationService";
-import { TrainingDay } from "@/types";
 
 interface TrainingPlanViewProps {
   plan: PlanWithRelations;
@@ -19,33 +18,48 @@ interface WorkoutProgress {
 
 type ViewMode = "weekly" | "calendar" | "stats";
 
+// Define types for the day objects that can have either workout relations or legacy properties
+type TrainingDayWithData = PlanWithRelations["weeks"][0]["trainingDays"][0] & {
+  workout?: {
+    id: string;
+    miles: string;
+    description: string;
+    isWorkout: boolean;
+  };
+  // Legacy properties that might exist
+  miles?: string;
+  description?: string;
+};
+
 // Helper functions to work with new workout structure
-const getDayMiles = (day: TrainingDay): number => {
+const getDayMiles = (day: TrainingDayWithData): number => {
   if (day.workout?.miles) {
     return Number(day.workout.miles);
   }
   // Fallback for legacy format
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return Number((day as any).miles || 0);
 };
 
-const getDayDescription = (day: TrainingDay): string => {
+const getDayDescription = (day: TrainingDayWithData): string => {
   if (day.workout?.description) {
     return day.workout.description;
   }
   // Fallback for legacy format
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (day as any).description || "Rest";
 };
 
-const isWorkoutDay = (day: TrainingDay): boolean => {
+const isWorkoutDay = (day: TrainingDayWithData): boolean => {
   if (day.workout?.isWorkout !== undefined) {
     return day.workout.isWorkout;
   }
   // Fallback for legacy format or check description
-  const description = (day as any).description || "";
+  const desc = day.description;
   return (
-    description.toLowerCase().includes("workout") ||
-    description.toLowerCase().includes("tempo") ||
-    description.toLowerCase().includes("interval") ||
+    desc?.toLowerCase().includes("workout") ||
+    desc?.toLowerCase().includes("tempo") ||
+    desc?.toLowerCase().includes("interval") ||
     false
   );
 };
@@ -55,6 +69,7 @@ export default function TrainingPlanView({
   onBack,
 }: TrainingPlanViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [workoutProgress, setWorkoutProgress] = useState<
     Record<string, WorkoutProgress>
   >({});
@@ -89,6 +104,13 @@ export default function TrainingPlanView({
   } | null>(null);
   const [savingDayId, setSavingDayId] = useState<string | null>(null);
   const [dayEditError, setDayEditError] = useState<string | null>(null);
+  const [loggingDayId, setLoggingDayId] = useState<string | null>(null);
+  const [loggingData, setLoggingData] = useState<{
+    actualMiles: number;
+    actualNotes: string;
+  } | null>(null);
+  const [savingLogId, setSavingLogId] = useState<string | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!editedPlan.name.trim()) {
@@ -215,7 +237,7 @@ export default function TrainingPlanView({
     setDuplicateError(null);
   };
 
-  const handleEditDay = (day: any) => {
+  const handleEditDay = (day: TrainingDayWithData) => {
     const miles = getDayMiles(day);
     const description = getDayDescription(day);
     const isWorkout = isWorkoutDay(day);
@@ -265,6 +287,59 @@ export default function TrainingPlanView({
     setDayEditError(null);
   };
 
+  const handleStartLogging = (day: TrainingDayWithData) => {
+    const miles = getDayMiles(day);
+    const description = getDayDescription(day);
+    const isWorkout = isWorkoutDay(day);
+
+    setLoggingDayId(day.id);
+    setLoggingData({
+      actualMiles: day.actualMiles ? Number(day.actualMiles) : miles,
+      actualNotes: day.actualNotes || (isWorkout ? description : ""),
+    });
+    setLogError(null);
+  };
+
+  const handleSaveLog = async (dayId: string) => {
+    if (!loggingData) return;
+
+    setSavingLogId(dayId);
+    setLogError(null);
+
+    try {
+      const response = await fetch(`/api/training-days/${dayId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actualMiles: loggingData.actualMiles,
+          actualNotes: loggingData.actualNotes,
+          completed: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setLogError(errorData.error || "Failed to log training day");
+        return;
+      }
+
+      // Reload the page to reflect changes
+      window.location.reload();
+    } catch {
+      setLogError("Network error occurred");
+    } finally {
+      setSavingLogId(null);
+    }
+  };
+
+  const handleCancelLog = () => {
+    setLoggingDayId(null);
+    setLoggingData(null);
+    setLogError(null);
+  };
+
   const getCurrentWeek = () => {
     const now = new Date();
     const planStart = new Date(plan.weeks[0]?.startDate || now);
@@ -274,24 +349,92 @@ export default function TrainingPlanView({
     return Math.max(0, Math.min(weeksPassed, plan.weeks.length - 1));
   };
 
-  const toggleWorkoutCompletion = (
-    dayId: string,
-    completed: boolean,
-    actualMiles?: number
-  ) => {
-    setWorkoutProgress(prev => ({
-      ...prev,
-      [dayId]: {
-        dayId,
-        completed,
-        actualMiles,
-        completedAt: completed ? new Date() : undefined,
-      },
-    }));
+  const currentWeekIndex = getCurrentWeek();
+  const displayWeek = selectedWeek !== null ? selectedWeek : currentWeekIndex;
+
+  const getWeekProgress = (week: (typeof plan.weeks)[0]) => {
+    const daysCompleted = week.trainingDays.filter(day => day.completed).length;
+    const totalDays = week.trainingDays.filter(
+      day => getDayMiles(day) > 0
+    ).length;
+    const percentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+
+    const actualMiles = week.trainingDays.reduce((sum, day) => {
+      return sum + (day.actualMiles ? Number(day.actualMiles) : 0);
+    }, 0);
+
+    return { daysCompleted, totalDays, percentage, actualMiles };
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+  const getPlanStats = () => {
+    const totalWeeks = plan.weeks.length;
+    const completedWeeks = plan.weeks.filter(week => {
+      const progress = getWeekProgress(week);
+      return progress.percentage === 100;
+    }).length;
+
+    const totalMiles = plan.weeks.reduce(
+      (sum, week) => sum + Number(week.targetMileage),
+      0
+    );
+    const completedMiles = plan.weeks.reduce((sum, week) => {
+      const progress = getWeekProgress(week);
+      return sum + progress.actualMiles;
+    }, 0);
+
+    return { totalWeeks, completedWeeks, totalMiles, completedMiles };
+  };
+
+  const getWorkoutTypeColor = (description: string) => {
+    switch (description.toLowerCase()) {
+      case "long run":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "workout":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "easy run":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "rest":
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      default:
+        return "bg-blue-100 text-blue-800 border-blue-200";
+    }
+  };
+
+  const getWorkoutDetails = (
+    description: string,
+    miles: number,
+    weekNumber: number
+  ) => {
+    const details: { pace?: string; notes?: string } = {};
+
+    switch (description.toLowerCase()) {
+      case "long run":
+        details.pace = "Easy pace + 30-60 seconds per mile";
+        details.notes = "Focus on time on feet and fueling practice";
+        break;
+      case "workout":
+        if (weekNumber <= 8) {
+          details.pace = "Tempo runs or hill repeats";
+          details.notes = "Build aerobic base and strength";
+        } else {
+          details.pace = "Marathon pace intervals";
+          details.notes = "Practice race pace and rhythm";
+        }
+        break;
+      case "easy run":
+        details.pace = "Conversational pace";
+        details.notes = "Active recovery, build aerobic base";
+        break;
+      case "rest":
+        details.notes = "Complete rest or light cross-training";
+        break;
+    }
+
+    return details;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
@@ -305,692 +448,948 @@ export default function TrainingPlanView({
     return `${hours}:${minutes}`;
   };
 
-  const getWorkoutTypeColor = (description: string) => {
-    const desc = description.toLowerCase();
-    if (desc.includes("easy") || desc.includes("recovery")) {
-      return "bg-green-100 text-green-800 border-green-200";
-    }
-    if (desc.includes("tempo") || desc.includes("threshold")) {
-      return "bg-orange-100 text-orange-800 border-orange-200";
-    }
-    if (desc.includes("interval") || desc.includes("speed")) {
-      return "bg-red-100 text-red-800 border-red-200";
-    }
-    if (desc.includes("long")) {
-      return "bg-blue-100 text-blue-800 border-blue-200";
-    }
-    return "bg-gray-100 text-gray-800 border-gray-200";
-  };
-
-  const getWorkoutDetails = (
-    description: string,
-    miles: number,
-    weekNumber: number
-  ) => {
-    const isLongRun = description.toLowerCase().includes("long");
-    const isTempo = description.toLowerCase().includes("tempo");
-    const isInterval = description.toLowerCase().includes("interval");
-    const isEasy = description.toLowerCase().includes("easy");
-
-    let pace = "";
-    let notes = "";
-
-    if (isEasy) {
-      pace = "Easy pace (7:30-8:30/mile)";
-      notes = "Conversational pace, should feel comfortable";
-    } else if (isLongRun) {
-      pace = "Long run pace (7:45-8:15/mile)";
-      notes = "Build endurance, practice race day nutrition";
-    } else if (isTempo) {
-      pace = "Tempo pace (6:45-7:15/mile)";
-      notes = "Comfortably hard, sustainable for 20-40 minutes";
-    } else if (isInterval) {
-      pace = "5K-10K pace (6:15-6:45/mile)";
-      notes = "High intensity with recovery intervals";
-    }
-
-    return { pace, notes };
-  };
+  const stats = getPlanStats();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <button
-              onClick={onBack}
-              className="mb-4 text-blue-600 hover:text-blue-700 flex items-center gap-2"
-            >
-              ← Back to Plans
-            </button>
-            {isEditing ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Plan Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editedPlan.name}
-                    onChange={e =>
-                      setEditedPlan(prev => ({ ...prev, name: e.target.value }))
-                    }
-                    className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={editedPlan.description}
-                    onChange={e =>
-                      setEditedPlan(prev => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex-1">
+              {isEditing ? (
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Marathon Date
+                    <label htmlFor="edit-plan-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Plan Name
                     </label>
                     <input
-                      type="date"
-                      value={editedPlan.marathonDate.split("T")[0]}
-                      onChange={e =>
-                        setEditedPlan(prev => ({
-                          ...prev,
-                          marathonDate: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Goal Time
-                    </label>
-                    <input
+                      id="edit-plan-name"
                       type="text"
-                      value={editedPlan.goalTime}
+                      value={editedPlan.name}
                       onChange={e =>
                         setEditedPlan(prev => ({
                           ...prev,
-                          goalTime: e.target.value,
+                          name: e.target.value,
                         }))
                       }
-                      placeholder="3:30:00"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+                  <div>
+                    <label htmlFor="edit-plan-description" className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="edit-plan-description"
+                      value={editedPlan.description}
+                      onChange={e =>
+                        setEditedPlan(prev => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      rows={3}
+                      className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+                    <div>
+                      <label htmlFor="edit-marathon-date" className="block text-sm font-medium text-gray-700 mb-1">
+                        Marathon Date
+                      </label>
+                      <input
+                        id="edit-marathon-date"
+                        type="date"
+                        value={editedPlan.marathonDate.split("T")[0]}
+                        onChange={e =>
+                          setEditedPlan(prev => ({
+                            ...prev,
+                            marathonDate: e.target.value,
+                          }))
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="edit-goal-time" className="block text-sm font-medium text-gray-700 mb-1">
+                        Goal Time
+                      </label>
+                      <input
+                        id="edit-goal-time"
+                        type="text"
+                        value={editedPlan.goalTime}
+                        onChange={e =>
+                          setEditedPlan(prev => ({
+                            ...prev,
+                            goalTime: e.target.value,
+                          }))
+                        }
+                        placeholder="3:30:00"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  {editError && (
+                    <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 max-w-md">
+                      {editError}
+                    </div>
+                  )}
                 </div>
-                {editError && (
-                  <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 max-w-md">
-                    {editError}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {plan.name}
-                </h1>
-                {plan.description && (
-                  <p className="text-gray-600 mb-4">{plan.description}</p>
-                )}
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <span>📅</span>
-                    <span>
-                      Marathon:{" "}
-                      {new Date(plan.marathonDate).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎯</span>
-                    <span>Goal: {formatTime(plan.goalTime)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>📊</span>
-                    <span>{plan.totalWeeks} weeks</span>
+              ) : (
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900 mb-3">
+                    {plan.name}
+                  </h1>
+                  {plan.description && (
+                    <p className="text-lg text-gray-600 mb-4">
+                      {plan.description}
+                    </p>
+                  )}
+                  <div className="flex items-center space-x-6 text-sm text-gray-500">
+                    <div className="flex items-center space-x-1">
+                      <span className="text-blue-600">📅</span>
+                      <span>
+                        {new Date(plan.marathonDate).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          }
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-green-600">🎯</span>
+                      <span>Goal: {formatTime(plan.goalTime)}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-purple-600">📊</span>
+                      <span>{plan.totalWeeks} weeks</span>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {isSaving && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    <span>{isSaving ? "Saving..." : "Save"}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    Edit Plan
+                  </button>
+                  <button
+                    onClick={() => setShowDuplicateDialog(true)}
+                    className="bg-green-100 hover:bg-green-200 text-green-700 font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    Duplicate Plan
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    Delete Plan
+                  </button>
+                  <button
+                    onClick={onBack}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    Back to Dashboard
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isEditing ? (
-              <>
+          {/* Plan Overview Stats */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.completedWeeks}/{stats.totalWeeks}
+                </div>
+                <div className="text-sm text-gray-500">Weeks Complete</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {Math.round(stats.completedMiles)}/
+                  {Math.round(stats.totalMiles)}
+                </div>
+                <div className="text-sm text-gray-500">Miles Complete</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {new Date(plan.marathonDate).toLocaleDateString()}
+                </div>
+                <div className="text-sm text-gray-500">Marathon Date</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {Math.ceil(
+                    (new Date(plan.marathonDate).getTime() -
+                      new Date().getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  )}{" "}
+                  days
+                </div>
+                <div className="text-sm text-gray-500">Days to Go</div>
+              </div>
+            </div>
+          </div>
+
+          {/* View Mode Selector */}
+          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("weekly")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "weekly"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Weekly View
+            </button>
+            <button
+              onClick={() => setViewMode("stats")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "stats"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Statistics
+            </button>
+          </div>
+
+          {/* Weekly View */}
+          {viewMode === "weekly" && (
+            <div className="space-y-6">
+              {/* Week Selector */}
+              <div className="flex items-center justify-center space-x-4">
                 <button
-                  onClick={handleCancel}
-                  disabled={isSaving}
+                  onClick={() => setSelectedWeek(Math.max(0, displayWeek - 1))}
+                  disabled={displayWeek === 0}
+                  className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ←
+                </button>
+                <span className="font-medium text-gray-900 min-w-[200px] text-center">
+                  Week {displayWeek + 1} of {plan.weeks.length}
+                  {displayWeek === currentWeekIndex && " (Current)"}
+                </span>
+                <button
+                  onClick={() =>
+                    setSelectedWeek(
+                      Math.min(plan.weeks.length - 1, displayWeek + 1)
+                    )
+                  }
+                  disabled={displayWeek === plan.weeks.length - 1}
+                  className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  →
+                </button>
+              </div>
+
+              {/* Current Week Detail */}
+              {plan.weeks[displayWeek] && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  {(() => {
+                    const week = plan.weeks[displayWeek];
+                    const progress = getWeekProgress(week);
+                    return (
+                      <>
+                        <div className="px-6 py-4 border-b border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-xl font-semibold text-gray-900">
+                                Week {week.weekNumber}
+                                {week.weekNumber === 16 && " (Peak Week)"}
+                                {week.weekNumber >= 17 && " (Taper)"}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                Starting {formatDate(week.startDate)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-semibold text-gray-900">
+                                {Math.round(progress.actualMiles)}/
+                                {week.targetMileage} miles
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {progress.daysCompleted}/{progress.totalDays}{" "}
+                                workouts
+                              </div>
+                              <div className="w-32 bg-gray-200 rounded-full h-2 mt-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${progress.percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <div className="grid gap-4">
+                            {week.trainingDays.map(day => {
+                              const miles = getDayMiles(day);
+                              const description = getDayDescription(day);
+                              const isWorkout = isWorkoutDay(day);
+                              const isRest = miles === 0;
+                              const workoutDetails = getWorkoutDetails(
+                                description,
+                                miles,
+                                week.weekNumber
+                              );
+                              const dayDate = new Date(day.date);
+                              const isPastDue =
+                                dayDate < new Date() && !day.completed;
+
+                              const isEditing = editingDayId === day.id;
+                              const isLogging = loggingDayId === day.id;
+
+                              return (
+                                <div
+                                  key={day.id}
+                                  className={`border rounded-lg p-4 transition-all ${
+                                    day.completed
+                                      ? "border-green-200 bg-green-50"
+                                      : isPastDue
+                                        ? "border-red-200 bg-red-50"
+                                        : "border-gray-200 bg-white"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-3 mb-2">
+                                        <div className="font-medium text-gray-900">
+                                          {formatDate(day.date)}
+                                        </div>
+                                        {!isEditing && (
+                                          <>
+                                            <span
+                                              className={`px-2 py-1 rounded-full text-xs font-medium border ${getWorkoutTypeColor(description)}`}
+                                            >
+                                              {description}
+                                            </span>
+                                            {isWorkout && (
+                                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                                🏃‍♂️ Workout
+                                              </span>
+                                            )}
+                                            {isPastDue && (
+                                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                                Overdue
+                                              </span>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+
+                                      {isEditing ? (
+                                        <div className="space-y-3">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                              <label
+                                                htmlFor={`miles-${day.id}`}
+                                                className="block text-sm font-medium text-gray-700 mb-1"
+                                              >
+                                                Miles
+                                              </label>
+                                              <input
+                                                id={`miles-${day.id}`}
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                value={
+                                                  editingDayData?.miles || 0
+                                                }
+                                                onChange={e =>
+                                                  setEditingDayData(prev =>
+                                                    prev
+                                                      ? {
+                                                          ...prev,
+                                                          miles:
+                                                            parseFloat(
+                                                              e.target.value
+                                                            ) || 0,
+                                                        }
+                                                      : null
+                                                  )
+                                                }
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label
+                                                htmlFor={`description-${day.id}`}
+                                                className="block text-sm font-medium text-gray-700 mb-1"
+                                              >
+                                                Description
+                                              </label>
+                                              <input
+                                                id={`description-${day.id}`}
+                                                type="text"
+                                                value={
+                                                  editingDayData?.description ||
+                                                  ""
+                                                }
+                                                onChange={e =>
+                                                  setEditingDayData(prev =>
+                                                    prev
+                                                      ? {
+                                                          ...prev,
+                                                          description:
+                                                            e.target.value,
+                                                        }
+                                                      : null
+                                                  )
+                                                }
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., Easy Run, Tempo, Long Run"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <label
+                                              htmlFor={`isWorkout-${day.id}`}
+                                              className="flex items-center space-x-2"
+                                            >
+                                              <input
+                                                id={`isWorkout-${day.id}`}
+                                                type="checkbox"
+                                                checked={
+                                                  editingDayData?.isWorkout ||
+                                                  false
+                                                }
+                                                onChange={e =>
+                                                  setEditingDayData(prev =>
+                                                    prev
+                                                      ? {
+                                                          ...prev,
+                                                          isWorkout:
+                                                            e.target.checked,
+                                                        }
+                                                      : null
+                                                  )
+                                                }
+                                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                              />
+                                              <span className="text-sm font-medium text-gray-700">
+                                                This is a workout day
+                                              </span>
+                                            </label>
+                                          </div>
+                                          {dayEditError && (
+                                            <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
+                                              {dayEditError}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <div className="text-lg font-semibold text-gray-900 mb-1">
+                                            {isRest
+                                              ? "Rest Day"
+                                              : `${miles} miles`}
+                                          </div>
+
+                                          {workoutDetails.pace && (
+                                            <div className="text-sm text-gray-600 mb-1">
+                                              <span className="font-medium">
+                                                Pace:
+                                              </span>{" "}
+                                              {workoutDetails.pace}
+                                            </div>
+                                          )}
+
+                                          {workoutDetails.notes && (
+                                            <div className="text-sm text-gray-500">
+                                              {workoutDetails.notes}
+                                            </div>
+                                          )}
+
+                                          {day.actualMiles && (
+                                            <div className="mt-2 text-sm text-green-600 bg-green-50 rounded p-2">
+                                              <span className="font-medium">
+                                                Actual:
+                                              </span>{" "}
+                                              {day.actualMiles} miles
+                                            </div>
+                                          )}
+
+                                          {day.actualNotes && (
+                                            <div className="mt-2 text-sm text-blue-600 bg-blue-50 rounded p-2">
+                                              <span className="font-medium">
+                                                Notes:
+                                              </span>{" "}
+                                              {day.actualNotes}
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {isLogging && (
+                                        <div className="space-y-3 mt-4">
+                                          <div className="text-lg font-medium text-gray-900">
+                                            {isWorkout
+                                              ? "Log your workout"
+                                              : "Log your run"}
+                                          </div>
+                                          <div className="grid grid-cols-1 gap-3">
+                                            <div>
+                                              <label
+                                                htmlFor={`actual-miles-${day.id}`}
+                                                className="block text-sm font-medium text-gray-700 mb-1"
+                                              >
+                                                Actual Miles
+                                              </label>
+                                              <input
+                                                id={`actual-miles-${day.id}`}
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                value={
+                                                  loggingData?.actualMiles || 0
+                                                }
+                                                onChange={e =>
+                                                  setLoggingData(prev =>
+                                                    prev
+                                                      ? {
+                                                          ...prev,
+                                                          actualMiles:
+                                                            parseFloat(
+                                                              e.target.value
+                                                            ) || 0,
+                                                        }
+                                                      : null
+                                                  )
+                                                }
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              />
+                                            </div>
+                                            {isWorkout && (
+                                              <div>
+                                                <label
+                                                  htmlFor={`actual-notes-${day.id}`}
+                                                  className="block text-sm font-medium text-gray-700 mb-1"
+                                                >
+                                                  Workout Completed
+                                                </label>
+                                                <div className="text-xs text-gray-500 mb-2">
+                                                  Planned: {description}
+                                                </div>
+                                                <textarea
+                                                  id={`actual-notes-${day.id}`}
+                                                  value={
+                                                    loggingData?.actualNotes ||
+                                                    ""
+                                                  }
+                                                  onChange={e =>
+                                                    setLoggingData(prev =>
+                                                      prev
+                                                        ? {
+                                                            ...prev,
+                                                            actualNotes:
+                                                              e.target.value,
+                                                          }
+                                                        : null
+                                                    )
+                                                  }
+                                                  rows={2}
+                                                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                  placeholder="Edit if needed, or save as-is to log as planned"
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                                          {logError && (
+                                            <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
+                                              {logError}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex flex-col items-end space-y-2">
+                                      {isEditing ? (
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={handleCancelDayEdit}
+                                            disabled={savingDayId === day.id}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50"
+                                          >
+                                            Cancel
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              handleSaveDay(day.id)
+                                            }
+                                            disabled={savingDayId === day.id}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-1"
+                                          >
+                                            {savingDayId === day.id && (
+                                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            )}
+                                            <span>
+                                              {savingDayId === day.id
+                                                ? "Saving..."
+                                                : "Save"}
+                                            </span>
+                                          </button>
+                                        </div>
+                                      ) : isLogging ? (
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={handleCancelLog}
+                                            disabled={savingLogId === day.id}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50"
+                                          >
+                                            Cancel
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              handleSaveLog(day.id)
+                                            }
+                                            disabled={savingLogId === day.id}
+                                            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-1"
+                                          >
+                                            {savingLogId === day.id && (
+                                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            )}
+                                            <span>
+                                              {savingLogId === day.id
+                                                ? "Saving..."
+                                                : isWorkout
+                                                  ? "Save Workout"
+                                                  : "Save Run"}
+                                            </span>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <button
+                                            onClick={() => handleEditDay(day)}
+                                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium py-1 px-3 rounded-md transition-colors"
+                                          >
+                                            Edit Day
+                                          </button>
+                                          {!isRest && !day.completed && (
+                                            <button
+                                              onClick={() =>
+                                                handleStartLogging(day)
+                                              }
+                                              className="bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium py-1 px-3 rounded-md transition-colors"
+                                            >
+                                              {isWorkout
+                                                ? "Log Workout"
+                                                : "Log Run"}
+                                            </button>
+                                          )}
+                                          {day.completed && (
+                                            <>
+                                              <button
+                                                onClick={() =>
+                                                  handleStartLogging(day)
+                                                }
+                                                className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm font-medium py-1 px-3 rounded-md transition-colors"
+                                              >
+                                                {isWorkout
+                                                  ? "Edit Workout"
+                                                  : "Edit Run"}
+                                              </button>
+                                              <div className="text-xs text-gray-500">
+                                                ✓{" "}
+                                                {day.completedAt
+                                                  ? new Date(
+                                                      day.completedAt
+                                                    ).toLocaleDateString()
+                                                  : "Completed"}
+                                              </div>
+                                            </>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Statistics View */}
+          {viewMode === "stats" && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                Training Progress
+              </h3>
+
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Weekly Progress
+                  </h4>
+                  <div className="space-y-2">
+                    {plan.weeks.map((week, index) => {
+                      const progress = getWeekProgress(week);
+                      const isCurrentWeek = index === currentWeekIndex;
+
+                      return (
+                        <div
+                          key={week.id}
+                          className={`flex items-center justify-between p-3 rounded-md ${
+                            isCurrentWeek
+                              ? "bg-blue-50 border border-blue-200"
+                              : "bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="font-medium text-sm">
+                              Week {week.weekNumber}
+                              {week.weekNumber === 16 && " (Peak)"}
+                              {week.weekNumber >= 17 && " (Taper)"}
+                            </div>
+                            {isCurrentWeek && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-sm text-gray-600">
+                              {Math.round(progress.actualMiles)}/
+                              {week.targetMileage} miles
+                            </div>
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${progress.percentage}%` }}
+                              ></div>
+                            </div>
+                            <div className="text-sm font-medium text-gray-900 w-12">
+                              {Math.round(progress.percentage)}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Dialog */}
+        {showDeleteDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Delete Training Plan
+              </h3>
+              <p className="text-gray-600 mb-4">
+                This action cannot be undone. This will permanently delete the
+                training plan and all associated data.
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type &ldquo;{plan.name}&rdquo; to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={e => setDeleteConfirmation(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder={plan.name}
+                />
+              </div>
+              {deleteError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mb-4">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteDialog(false);
+                    setDeleteConfirmation("");
+                    setDeleteError(null);
+                  }}
+                  disabled={isDeleting}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                  onClick={handleDelete}
+                  disabled={isDeleting || deleteConfirmation !== plan.name}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
-                  {isSaving && (
+                  {isDeleting && (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   )}
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isDeleting ? "Deleting..." : "Delete Plan"}
                 </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-md font-medium transition-colors"
-                >
-                  Edit Plan
-                </button>
-                <button
-                  onClick={() => setShowDuplicateDialog(true)}
-                  className="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-md font-medium transition-colors"
-                >
-                  Duplicate Plan
-                </button>
-                <button
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-md font-medium transition-colors"
-                >
-                  Delete Plan
-                </button>
-              </>
-            )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* View Mode Selector */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          {(["weekly", "calendar", "stats"] as ViewMode[]).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors capitalize ${
-                viewMode === mode
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content based on view mode */}
-      {viewMode === "weekly" && (
-        <div className="space-y-8">
-          {plan.weeks.map((week, weekIndex) => (
-            <div
-              key={week.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-            >
-              {/* Week Header */}
-              <div className="flex items-center justify-between mb-6">
+        {/* Duplicate Dialog */}
+        {showDuplicateDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Duplicate Training Plan
+              </h3>
+              <div className="space-y-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Week {week.weekNumber}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {new Date(week.startDate).toLocaleDateString()} -{" "}
-                    {new Date(
-                      new Date(week.startDate).getTime() + 6 * 24 * 60 * 60 * 1000
-                    ).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Target: {week.targetMileage} miles
-                  </p>
+                  <label
+                    htmlFor="duplicate-plan-name"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Plan Name
+                  </label>
+                  <input
+                    id="duplicate-plan-name"
+                    type="text"
+                    value={duplicateForm.name}
+                    onChange={e =>
+                      setDuplicateForm(prev => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                {weekIndex === getCurrentWeek() && (
-                  <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                    Current Week
-                  </span>
-                )}
+                <div>
+                  <label
+                    htmlFor="duplicate-plan-description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Description
+                  </label>
+                  <textarea
+                    id="duplicate-plan-description"
+                    value={duplicateForm.description}
+                    onChange={e =>
+                      setDuplicateForm(prev => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="duplicate-marathon-date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    New Marathon Date
+                  </label>
+                  <input
+                    id="duplicate-marathon-date"
+                    type="date"
+                    value={duplicateForm.marathonDate}
+                    onChange={e =>
+                      setDuplicateForm(prev => ({
+                        ...prev,
+                        marathonDate: e.target.value,
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="duplicate-goal-time"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Goal Time
+                  </label>
+                  <input
+                    id="duplicate-goal-time"
+                    type="text"
+                    value={duplicateForm.goalTime}
+                    onChange={e =>
+                      setDuplicateForm(prev => ({
+                        ...prev,
+                        goalTime: e.target.value,
+                      }))
+                    }
+                    placeholder="3:30:00"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
-
-              {/* Training Days */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {week.trainingDays?.map(day => {
-                  const miles = getDayMiles(day);
-                  const description = getDayDescription(day);
-                  const isWorkout = isWorkoutDay(day);
-                  const isRest = miles === 0;
-                  const dayProgress = workoutProgress[day.id];
-                  const workoutDetails = getWorkoutDetails(
-                    description,
-                    miles,
-                    week.weekNumber
-                  );
-                  const dayDate = new Date(day.date);
-                  const isPastDue =
-                    dayDate < new Date() && !dayProgress?.completed;
-
-                  const isEditing = editingDayId === day.id;
-
-                  return (
-                    <div
-                      key={day.id}
-                      className={`border rounded-lg p-4 transition-all ${
-                        dayProgress?.completed
-                          ? "border-green-200 bg-green-50"
-                          : isPastDue
-                            ? "border-red-200 bg-red-50"
-                            : "border-gray-200 bg-white hover:shadow-md"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <div className="font-medium text-gray-900">
-                              {formatDate(day.date)}
-                            </div>
-                            {!isEditing && (
-                              <>
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium border ${getWorkoutTypeColor(description)}`}
-                                >
-                                  {description}
-                                </span>
-                                {isWorkout && (
-                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                                    🏃‍♂️ Workout
-                                  </span>
-                                )}
-                                {isPastDue && (
-                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                    Overdue
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-
-                          {isEditing ? (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label
-                                    htmlFor={`miles-${day.id}`}
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Miles
-                                  </label>
-                                  <input
-                                    id={`miles-${day.id}`}
-                                    type="number"
-                                    min="0"
-                                    step="0.1"
-                                    value={editingDayData?.miles || 0}
-                                    onChange={e =>
-                                      setEditingDayData(prev =>
-                                        prev
-                                          ? {
-                                              ...prev,
-                                              miles:
-                                                parseFloat(e.target.value) || 0,
-                                            }
-                                          : null
-                                      )
-                                    }
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </div>
-                                <div>
-                                  <label
-                                    htmlFor={`description-${day.id}`}
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Description
-                                  </label>
-                                  <input
-                                    id={`description-${day.id}`}
-                                    type="text"
-                                    value={editingDayData?.description || ""}
-                                    onChange={e =>
-                                      setEditingDayData(prev =>
-                                        prev
-                                          ? {
-                                              ...prev,
-                                              description: e.target.value,
-                                            }
-                                          : null
-                                      )
-                                    }
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="e.g., Easy Run, Tempo, Long Run"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label
-                                  htmlFor={`isWorkout-${day.id}`}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <input
-                                    id={`isWorkout-${day.id}`}
-                                    type="checkbox"
-                                    checked={editingDayData?.isWorkout || false}
-                                    onChange={e =>
-                                      setEditingDayData(prev =>
-                                        prev
-                                          ? {
-                                              ...prev,
-                                              isWorkout: e.target.checked,
-                                            }
-                                          : null
-                                      )
-                                    }
-                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                  />
-                                  <span className="text-sm font-medium text-gray-700">
-                                    This is a workout day
-                                  </span>
-                                </label>
-                              </div>
-                              {dayEditError && (
-                                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2">
-                                  {dayEditError}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              <div className="text-lg font-semibold text-gray-900 mb-1">
-                                {isRest ? "Rest Day" : `${miles} miles`}
-                              </div>
-
-                              {workoutDetails.pace && (
-                                <div className="text-sm text-gray-600 mb-1">
-                                  <span className="font-medium">Pace:</span>{" "}
-                                  {workoutDetails.pace}
-                                </div>
-                              )}
-
-                              {workoutDetails.notes && (
-                                <div className="text-sm text-gray-500">
-                                  {workoutDetails.notes}
-                                </div>
-                              )}
-
-                              {dayProgress?.notes && (
-                                <div className="mt-2 text-sm text-blue-600 bg-blue-50 rounded p-2">
-                                  <span className="font-medium">Notes:</span>{" "}
-                                  {dayProgress.notes}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-end space-y-2">
-                          {isEditing ? (
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={handleCancelDayEdit}
-                                disabled={savingDayId === day.id}
-                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleSaveDay(day.id)}
-                                disabled={savingDayId === day.id}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1 px-3 rounded-md transition-colors disabled:opacity-50 flex items-center space-x-1"
-                              >
-                                {savingDayId === day.id && (
-                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                )}
-                                <span>
-                                  {savingDayId === day.id ? "Saving..." : "Save"}
-                                </span>
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleEditDay(day)}
-                                className="bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium py-1 px-3 rounded-md transition-colors"
-                              >
-                                Edit Day
-                              </button>
-                              {!isRest && (
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={dayProgress?.completed || false}
-                                    onChange={e =>
-                                      toggleWorkoutCompletion(
-                                        day.id,
-                                        e.target.checked,
-                                        e.target.checked ? miles : 0
-                                      )
-                                    }
-                                    className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                  />
-                                  <label className="text-sm text-gray-700">
-                                    {dayProgress?.completed
-                                      ? "Completed"
-                                      : "Mark complete"}
-                                  </label>
-                                </div>
-                              )}
-
-                              {dayProgress?.completed && (
-                                <div className="text-xs text-gray-500">
-                                  ✓{" "}
-                                  {dayProgress.completedAt?.toLocaleDateString()}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              {duplicateError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mt-4">
+                  {duplicateError}
+                </div>
+              )}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={closeDuplicateDialog}
+                  disabled={isDuplicating}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDuplicate}
+                  disabled={
+                    isDuplicating ||
+                    !duplicateForm.name.trim() ||
+                    !duplicateForm.marathonDate
+                  }
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isDuplicating && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {isDuplicating ? "Duplicating..." : "Duplicate Plan"}
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {viewMode === "calendar" && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Calendar View (Coming Soon)
-          </h3>
-          <p className="text-gray-600">
-            This view will show your training plan in a calendar format with
-            daily workouts and progress tracking.
-          </p>
-        </div>
-      )}
-
-      {viewMode === "stats" && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Statistics (Coming Soon)
-          </h3>
-          <p className="text-gray-600">
-            This view will show your training statistics, progress charts, and
-            performance analytics.
-          </p>
-        </div>
-      )}
-
-      {/* Delete Dialog */}
-      {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Delete Training Plan
-            </h3>
-            <p className="text-gray-600 mb-4">
-              This action cannot be undone. This will permanently delete the
-              training plan and all associated data.
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type "{plan.name}" to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmation}
-                onChange={e => setDeleteConfirmation(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder={plan.name}
-              />
-            </div>
-            {deleteError && (
-              <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mb-4">
-                {deleteError}
-              </div>
-            )}
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteDialog(false);
-                  setDeleteConfirmation("");
-                  setDeleteError(null);
-                }}
-                disabled={isDeleting}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting || deleteConfirmation !== plan.name}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isDeleting && (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                )}
-                {isDeleting ? "Deleting..." : "Delete Plan"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Duplicate Dialog */}
-      {showDuplicateDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Duplicate Training Plan
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="duplicate-plan-name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Plan Name
-                </label>
-                <input
-                  id="duplicate-plan-name"
-                  type="text"
-                  value={duplicateForm.name}
-                  onChange={e =>
-                    setDuplicateForm(prev => ({ ...prev, name: e.target.value }))
-                  }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="duplicate-plan-description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  id="duplicate-plan-description"
-                  value={duplicateForm.description}
-                  onChange={e =>
-                    setDuplicateForm(prev => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="duplicate-marathon-date" className="block text-sm font-medium text-gray-700 mb-1">
-                  New Marathon Date
-                </label>
-                <input
-                  id="duplicate-marathon-date"
-                  type="date"
-                  value={duplicateForm.marathonDate}
-                  onChange={e =>
-                    setDuplicateForm(prev => ({
-                      ...prev,
-                      marathonDate: e.target.value,
-                    }))
-                  }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="duplicate-goal-time" className="block text-sm font-medium text-gray-700 mb-1">
-                  Goal Time
-                </label>
-                <input
-                  id="duplicate-goal-time"
-                  type="text"
-                  value={duplicateForm.goalTime}
-                  onChange={e =>
-                    setDuplicateForm(prev => ({
-                      ...prev,
-                      goalTime: e.target.value,
-                    }))
-                  }
-                  placeholder="3:30:00"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            {duplicateError && (
-              <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-md p-2 mt-4">
-                {duplicateError}
-              </div>
-            )}
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={closeDuplicateDialog}
-                disabled={isDuplicating}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDuplicate}
-                disabled={
-                  isDuplicating ||
-                  !duplicateForm.name.trim() ||
-                  !duplicateForm.marathonDate
-                }
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isDuplicating && (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                )}
-                {isDuplicating ? "Duplicating..." : "Duplicate Plan"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

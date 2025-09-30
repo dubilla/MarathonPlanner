@@ -127,6 +127,7 @@ export const getTrainingStats = async (userId: string) => {
 };
 
 // Get recent activity for dashboard
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const getRecentActivity = async (userId: string) => {
   // This would return recent training day completions, plan creations, etc.
   // For now, return empty array
@@ -134,6 +135,7 @@ export const getRecentActivity = async (userId: string) => {
 };
 
 // Get upcoming workouts for dashboard
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const getUpcomingWorkouts = async (userId: string) => {
   // This would return upcoming training days based on current date
   // For now, return empty array
@@ -151,7 +153,7 @@ export const savePlan = async (plan: PlanWithRelations) => {
         userId: plan.userId,
         name: plan.name,
         description: plan.description,
-        marathonDate: new Date(plan.marathonDate),
+        marathonDate: plan.marathonDate,
         goalTime: plan.goalTime,
         totalWeeks: plan.totalWeeks,
         createdAt: new Date(),
@@ -164,7 +166,7 @@ export const savePlan = async (plan: PlanWithRelations) => {
       id: week.id,
       planId: plan.id,
       weekNumber: week.weekNumber,
-      startDate: new Date(week.startDate),
+      startDate: week.startDate,
       targetMileage: week.targetMileage.toString(),
       actualMileage: week.actualMileage?.toString() || null,
       notes: week.notes,
@@ -176,10 +178,13 @@ export const savePlan = async (plan: PlanWithRelations) => {
     }
 
     // Prepare workout data for days with miles > 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const workoutsData: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const daysData: any[] = [];
 
     plan.weeks.forEach(week => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       week.trainingDays.forEach((day: any) => {
         // Create workout record for non-rest days
         if (day.miles && Number(day.miles) > 0) {

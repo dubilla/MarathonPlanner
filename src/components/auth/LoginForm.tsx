@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,7 +96,7 @@ export default function LoginForm() {
       } else if (result?.ok) {
         console.log("[LOGIN FORM] Signin successful, redirecting...");
         setMessage("Signed in successfully! Redirecting...");
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
       }
     } catch (error) {
       console.error("[LOGIN FORM] Exception during signin:", error);

@@ -4,14 +4,24 @@ import { signIn } from "next-auth/react";
 import RegistrationForm from "@/components/auth/RegistrationForm";
 
 jest.mock("next-auth/react");
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(),
+}));
 
 const mockSignIn = signIn as jest.MockedFunction<typeof signIn>;
+const mockPush = jest.fn();
+const mockUseRouter = jest.requireMock("next/navigation").useRouter;
 
 describe("RegistrationForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Mock environment variable check
     process.env.NEXT_PUBLIC_DB_CONFIGURED = "true";
+    // Mock useRouter
+    mockUseRouter.mockReturnValue({
+      push: mockPush,
+      refresh: jest.fn(),
+    });
   });
 
   afterEach(() => {
@@ -198,6 +208,31 @@ describe("RegistrationForm", () => {
 
       expect(screen.getByText("Creating Account...")).toBeInTheDocument();
       expect(createButton).toBeDisabled();
+    });
+
+    it("redirects to dashboard on successful signup", async () => {
+      const user = userEvent.setup();
+      mockSignIn.mockResolvedValue({ ok: true, error: null } as Awaited<
+        ReturnType<typeof signIn>
+      >);
+
+      render(<RegistrationForm />);
+
+      const emailInput = screen.getByLabelText("Email Address");
+      const passwordInput = screen.getByLabelText("Password");
+      const confirmPasswordInput = screen.getByLabelText("Confirm Password");
+      const createButton = screen.getByRole("button", {
+        name: "Create Account",
+      });
+
+      await user.type(emailInput, "test@example.com");
+      await user.type(passwordInput, "password123");
+      await user.type(confirmPasswordInput, "password123");
+      await user.click(createButton);
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      });
     });
   });
 });

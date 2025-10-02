@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function RegistrationForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -88,7 +90,7 @@ export default function RegistrationForm() {
       } else if (result?.ok) {
         console.log("[REGISTRATION FORM] Signup successful, redirecting...");
         setMessage("Account created successfully! Redirecting...");
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
       }
     } catch (error) {
       console.error("[REGISTRATION FORM] Exception during signup:", error);

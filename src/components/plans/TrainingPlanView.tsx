@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PlanWithRelations } from "@/services/PlanCreationService";
 
 interface TrainingPlanViewProps {
@@ -68,6 +69,7 @@ export default function TrainingPlanView({
   plan,
   onBack,
 }: TrainingPlanViewProps) {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [workoutProgress, setWorkoutProgress] = useState<
@@ -141,7 +143,7 @@ export default function TrainingPlanView({
         return;
       }
 
-      window.location.reload();
+      router.refresh();
     } catch {
       setEditError("Network error occurred");
     } finally {
@@ -218,7 +220,7 @@ export default function TrainingPlanView({
       }
 
       const newPlan = await response.json();
-      window.location.href = `/plans/${newPlan.id}`;
+      router.push(`/plans/${newPlan.id}`);
     } catch {
       setDuplicateError("Network error occurred");
     } finally {
@@ -272,8 +274,7 @@ export default function TrainingPlanView({
         return;
       }
 
-      // Reload the page to reflect changes
-      window.location.reload();
+      router.refresh();
     } catch {
       setDayEditError("Network error occurred");
     } finally {
@@ -325,8 +326,7 @@ export default function TrainingPlanView({
         return;
       }
 
-      // Reload the page to reflect changes
-      window.location.reload();
+      router.refresh();
     } catch {
       setLogError("Network error occurred");
     } finally {

@@ -10,6 +10,14 @@ jest.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
+// Mock Next.js router
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 describe("Plan Deletion Integration", () => {
   const mockPlanId = "test-plan-id";
   const mockUserId = "test-user-id";

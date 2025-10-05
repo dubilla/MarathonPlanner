@@ -3,14 +3,15 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import TrainingPlanView from "@/components/plans/TrainingPlanView";
 import { PlanWithRelations } from "@/services/PlanCreationService";
 
-// Mock location - delete existing and assign new mock
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (window as any).location;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).location = {
-  reload: jest.fn(),
-  href: "",
-};
+// Mock Next.js router
+const mockPush = jest.fn();
+const mockRefresh = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    refresh: mockRefresh,
+  }),
+}));
 
 const mockPlan: PlanWithRelations = {
   id: "plan-1",

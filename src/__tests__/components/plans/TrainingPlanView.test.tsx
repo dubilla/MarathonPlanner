@@ -147,7 +147,7 @@ describe("TrainingPlanView", () => {
 
     expect(screen.getByText("Test Plan")).toBeInTheDocument();
     expect(screen.getByText("Test Description")).toBeInTheDocument();
-    expect(screen.getByText(/6\/1\/2024/)).toBeInTheDocument();
+    expect(screen.getByText("6/2/2024")).toBeInTheDocument();
     expect(screen.getByText("Goal: 3:30")).toBeInTheDocument();
     expect(screen.getByText("18 weeks")).toBeInTheDocument();
   });

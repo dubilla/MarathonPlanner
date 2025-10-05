@@ -643,7 +643,7 @@ export default function TrainingPlanView({
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {new Date(plan.marathonDate).toLocaleDateString()}
+                  {new Date(plan.marathonDate + 'T00:00:00Z').toLocaleDateString("en-US", { timeZone: "UTC" })}
                 </div>
                 <div className="text-sm text-gray-500">Marathon Date</div>
               </div>

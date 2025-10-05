@@ -150,7 +150,7 @@ describe("PlanPreview", () => {
       expect(
         screen.getByText(/18-week marathon training plan/)
       ).toBeInTheDocument();
-      expect(screen.getByText("October 14, 2024")).toBeInTheDocument();
+      expect(screen.getByText("October 15, 2024")).toBeInTheDocument();
       expect(screen.getByText("18 weeks")).toBeInTheDocument();
     });
 
@@ -177,7 +177,7 @@ describe("PlanPreview", () => {
       );
 
       expect(screen.getByText("Marathon Date:")).toBeInTheDocument();
-      expect(screen.getByText("October 14, 2024")).toBeInTheDocument();
+      expect(screen.getByText("October 15, 2024")).toBeInTheDocument();
     });
   });
 

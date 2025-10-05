@@ -28,35 +28,17 @@ describe("RegistrationForm", () => {
     delete process.env.NEXT_PUBLIC_DB_CONFIGURED;
   });
 
-  describe("Database Configuration", () => {
-    it("shows database configuration warning when DB is not configured", () => {
-      delete process.env.NEXT_PUBLIC_DB_CONFIGURED;
+  it("shows registration form", () => {
+    render(<RegistrationForm />);
 
-      render(<RegistrationForm />);
-
-      expect(
-        screen.getByText(
-          "Database configuration required to use authentication."
-        )
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Please set up your environment variables/)
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Email Address")).not.toBeInTheDocument();
-    });
-
-    it("shows registration form when database is configured", () => {
-      render(<RegistrationForm />);
-
-      expect(screen.getByText("Marathon Training Planner")).toBeInTheDocument();
-      expect(screen.getByLabelText("Email Address")).toBeInTheDocument();
-      expect(screen.getByLabelText("Password")).toBeInTheDocument();
-      expect(screen.getByLabelText("Confirm Password")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Create Account" })
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Already have an account/)).toBeInTheDocument();
-    });
+    expect(screen.getByText("Marathon Training Planner")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email Address")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm Password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Account" })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Already have an account/)).toBeInTheDocument();
   });
 
   describe("Form Validation", () => {

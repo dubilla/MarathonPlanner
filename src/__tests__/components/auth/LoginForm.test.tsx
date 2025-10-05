@@ -28,39 +28,21 @@ describe("LoginForm", () => {
     delete process.env.NEXT_PUBLIC_DB_CONFIGURED;
   });
 
-  describe("Database Configuration", () => {
-    it("shows database configuration warning when DB_CONFIGURED is not set", () => {
-      delete process.env.NEXT_PUBLIC_DB_CONFIGURED;
+  it("shows login form", () => {
+    render(<LoginForm />);
 
-      render(<LoginForm />);
-
-      expect(
-        screen.getByText(
-          "Database configuration required to use authentication."
-        )
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Please set up your environment variables/)
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Email Address")).not.toBeInTheDocument();
-    });
-
-    it("shows login form when database is configured", () => {
-      render(<LoginForm />);
-
-      expect(screen.getByText("Marathon Training Planner")).toBeInTheDocument();
-      expect(screen.getByLabelText("Email Address")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Password" })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Magic Link" })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Sign In" })
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Don't have an account/)).toBeInTheDocument();
-    });
+    expect(screen.getByText("Marathon Training Planner")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email Address")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Password" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Magic Link" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sign In" })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Don't have an account/)).toBeInTheDocument();
   });
 
   describe("Password Auth Mode", () => {

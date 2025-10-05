@@ -14,27 +14,6 @@ export default function LoginForm() {
     "password"
   );
 
-  const isDatabaseConfigured = process.env.NEXT_PUBLIC_DB_CONFIGURED;
-
-  if (!isDatabaseConfigured) {
-    return (
-      <div className="max-w-md mx-auto bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-        <h2 className="text-2xl font-bold mb-4 text-center text-gray-900">
-          Marathon Training Planner
-        </h2>
-        <div className="text-center">
-          <p className="text-yellow-800 mb-4">
-            Database configuration required to use authentication.
-          </p>
-          <p className="text-sm text-yellow-700">
-            Please set up your environment variables. See README.md for
-            instructions.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

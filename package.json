@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
     "test": "jest",
+    "test:ci": "jest --reporters=default --reporters=github-actions --no-coverage",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "db:generate": "drizzle-kit generate",
@@ -29,10 +30,12 @@
     "next": "15.4.6",
     "next-auth": "^4.24.11",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@jest/reporters": "^30.2.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.7.0",
     "@testing-library/react": "^16.3.0",
@@ -54,6 +57,7 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

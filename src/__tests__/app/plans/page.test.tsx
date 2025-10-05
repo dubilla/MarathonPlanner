@@ -14,9 +14,10 @@ global.confirm = jest.fn();
 
 // Mock Next.js navigation
 const mockPush = jest.fn();
+const mockRefresh = jest.fn();
 const mockRouter = {
   push: mockPush,
-  refresh: jest.fn(),
+  refresh: mockRefresh,
   back: jest.fn(),
   forward: jest.fn(),
   replace: jest.fn(),
@@ -74,10 +75,7 @@ describe("PlansPage", () => {
     (fetch as jest.Mock).mockClear();
     (confirm as jest.Mock).mockClear();
     mockPush.mockClear();
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
+    mockRefresh.mockClear();
   });
 
   it("renders loading state initially", () => {
@@ -335,6 +333,27 @@ describe("PlansPage", () => {
     expect(
       screen.getByText("Failed to load training plans")
     ).toBeInTheDocument();
+  });
+
+  it("calls router.refresh when Try Again button is clicked", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1", email: "test@example.com" },
+      loading: false,
+      signOut: jest.fn(),
+    });
+
+    (fetch as jest.Mock).mockRejectedValueOnce(new Error("Network error"));
+
+    render(<PlansPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load plans")).toBeInTheDocument();
+    });
+
+    const tryAgainButton = screen.getByText("Try Again");
+    fireEvent.click(tryAgainButton);
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
   });
 
   it("shows empty state when no plans exist", async () => {

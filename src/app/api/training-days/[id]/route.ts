@@ -145,11 +145,11 @@ export async function PUT(
       success: true,
       trainingDay: updatedTrainingDay,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating training day:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request data", details: error.errors },
+        { error: "Invalid request data", details: error.issues },
         { status: 400 }
       );
     }

@@ -59,8 +59,10 @@ export const getFullTrainingPlan = async (
     where: eq(trainingPlans.id, planId),
     with: {
       weeks: {
+        orderBy: (weeks, { asc }) => [asc(weeks.weekNumber)],
         with: {
           trainingDays: {
+            orderBy: (days, { asc }) => [asc(days.dayOfWeek)],
             with: {
               workout: true,
             },

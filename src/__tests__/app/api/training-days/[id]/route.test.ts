@@ -51,6 +51,7 @@ describe("PUT /api/training-days/[id]", () => {
     (mockDb.query as any) = {
       trainingDays: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
       },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,6 +169,8 @@ describe("PUT /api/training-days/[id]", () => {
         },
       });
 
+    mockDb.query.trainingDays.findMany.mockResolvedValueOnce([mockTrainingDay]);
+
     mockDb.update.mockReturnValue({
       set: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue(undefined),
@@ -283,6 +286,8 @@ describe("PUT /api/training-days/[id]", () => {
         },
       });
 
+    mockDb.query.trainingDays.findMany.mockResolvedValueOnce([mockTrainingDay]);
+
     mockDb.update.mockReturnValue({
       set: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue(undefined),
@@ -352,6 +357,8 @@ describe("PUT /api/training-days/[id]", () => {
           isWorkout: false,
         },
       });
+
+    mockDb.query.trainingDays.findMany.mockResolvedValueOnce([mockTrainingDay]);
 
     mockDb.update.mockReturnValue({
       set: jest.fn().mockReturnValue({

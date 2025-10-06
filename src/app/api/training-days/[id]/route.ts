@@ -71,22 +71,57 @@ export async function PUT(
       validatedData.isWorkout !== undefined
     ) {
       if (trainingDay.workoutId) {
-        // Update existing workout
-        await db
-          .update(workouts)
-          .set({
-            ...(validatedData.miles !== undefined && {
-              miles: validatedData.miles.toString(),
-            }),
-            ...(validatedData.description !== undefined && {
-              description: validatedData.description,
-            }),
-            ...(validatedData.isWorkout !== undefined && {
-              isWorkout: validatedData.isWorkout,
-            }),
-            updatedAt: new Date(),
-          })
-          .where(eq(workouts.id, trainingDay.workoutId));
+        // Check if this workout is shared with other training days
+        const sharedDays = await db.query.trainingDays.findMany({
+          where: eq(trainingDays.workoutId, trainingDay.workoutId),
+        });
+
+        if (sharedDays.length > 1) {
+          // Workout is shared, create a new workout for this training day
+          const newWorkout = await db
+            .insert(workouts)
+            .values({
+              miles: (
+                validatedData.miles ??
+                Number(trainingDay.workout?.miles ?? 0)
+              ).toString(),
+              description:
+                validatedData.description ??
+                trainingDay.workout?.description ??
+                "Easy Run",
+              isWorkout:
+                validatedData.isWorkout ??
+                trainingDay.workout?.isWorkout ??
+                false,
+            })
+            .returning();
+
+          // Link the new workout to this training day
+          await db
+            .update(trainingDays)
+            .set({
+              workoutId: newWorkout[0].id,
+              updatedAt: new Date(),
+            })
+            .where(eq(trainingDays.id, id));
+        } else {
+          // Workout is not shared, safe to update
+          await db
+            .update(workouts)
+            .set({
+              ...(validatedData.miles !== undefined && {
+                miles: validatedData.miles.toString(),
+              }),
+              ...(validatedData.description !== undefined && {
+                description: validatedData.description,
+              }),
+              ...(validatedData.isWorkout !== undefined && {
+                isWorkout: validatedData.isWorkout,
+              }),
+              updatedAt: new Date(),
+            })
+            .where(eq(workouts.id, trainingDay.workoutId));
+        }
       } else {
         // Create new workout
         const newWorkout = await db

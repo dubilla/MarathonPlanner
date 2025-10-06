@@ -274,6 +274,8 @@ export default function TrainingPlanView({
         return;
       }
 
+      setEditingDayId(null);
+      setEditingDayData(null);
       router.refresh();
     } catch {
       setDayEditError("Network error occurred");
@@ -326,6 +328,8 @@ export default function TrainingPlanView({
         return;
       }
 
+      setLoggingDayId(null);
+      setLoggingData(null);
       router.refresh();
     } catch {
       setLogError("Network error occurred");

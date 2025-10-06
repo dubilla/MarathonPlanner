@@ -160,7 +160,7 @@ function PlansPageContent() {
                 <div className="flex items-center text-sm text-gray-600">
                   <span className="mr-2">📅</span>
                   <span>
-                    Marathon: {new Date(plan.marathonDate).toLocaleDateString()}
+                    Marathon: {new Date(plan.marathonDate + 'T00:00:00').toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center text-sm text-gray-600">

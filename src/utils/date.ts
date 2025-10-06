@@ -1,5 +1,5 @@
 export const formatDate = (date: string | Date): string => {
-  const d = new Date(date);
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : new Date(date);
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -8,7 +8,7 @@ export const formatDate = (date: string | Date): string => {
 };
 
 export const formatDateShort = (date: string | Date): string => {
-  const d = new Date(date);
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : new Date(date);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -17,7 +17,7 @@ export const formatDateShort = (date: string | Date): string => {
 
 export const getWeeksUntilMarathon = (marathonDate: string): number => {
   const now = new Date();
-  const marathon = new Date(marathonDate);
+  const marathon = new Date(marathonDate + 'T00:00:00');
   const diffTime = marathon.getTime() - now.getTime();
   const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
   return Math.max(0, diffWeeks);

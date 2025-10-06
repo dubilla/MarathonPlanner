@@ -342,7 +342,8 @@ export default function TrainingPlanView({
 
   const getCurrentWeek = () => {
     const now = new Date();
-    const planStart = new Date(plan.weeks[0]?.startDate || now);
+    const startDateStr = plan.weeks[0]?.startDate;
+    const planStart = startDateStr ? new Date(startDateStr + 'T00:00:00') : now;
     const weeksPassed = Math.floor(
       (now.getTime() - planStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
     );
@@ -434,7 +435,7 @@ export default function TrainingPlanView({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
@@ -550,7 +551,7 @@ export default function TrainingPlanView({
                     <div className="flex items-center space-x-1">
                       <span className="text-blue-600">📅</span>
                       <span>
-                        {new Date(plan.marathonDate).toLocaleDateString(
+                        {new Date(plan.marathonDate + 'T00:00:00').toLocaleDateString(
                           "en-US",
                           {
                             month: "long",
@@ -650,7 +651,7 @@ export default function TrainingPlanView({
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600">
                   {Math.ceil(
-                    (new Date(plan.marathonDate).getTime() -
+                    (new Date(plan.marathonDate + 'T00:00:00').getTime() -
                       new Date().getTime()) /
                       (1000 * 60 * 60 * 24)
                   )}{" "}
@@ -765,7 +766,7 @@ export default function TrainingPlanView({
                                 miles,
                                 week.weekNumber
                               );
-                              const dayDate = new Date(day.date);
+                              const dayDate = new Date(day.date + 'T00:00:00');
                               const isPastDue =
                                 dayDate < new Date() && !day.completed;
 

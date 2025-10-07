@@ -94,7 +94,7 @@ export default function TrainingPlanView({
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayData, setEditingDayData] = useState<{
-    miles: number;
+    miles: number | null;
     description: string;
     isWorkout: boolean;
   } | null>(null);
@@ -102,7 +102,7 @@ export default function TrainingPlanView({
   const [dayEditError, setDayEditError] = useState<string | null>(null);
   const [loggingDayId, setLoggingDayId] = useState<string | null>(null);
   const [loggingData, setLoggingData] = useState<{
-    actualMiles: number;
+    actualMiles: number | null;
     actualNotes: string;
   } | null>(null);
   const [savingLogId, setSavingLogId] = useState<string | null>(null);
@@ -246,6 +246,11 @@ export default function TrainingPlanView({
   const handleSaveDay = async (dayId: string) => {
     if (!editingDayData) return;
 
+    if (editingDayData.miles === null || isNaN(editingDayData.miles)) {
+      setDayEditError("Miles must be a valid number");
+      return;
+    }
+
     setSavingDayId(dayId);
     setDayEditError(null);
 
@@ -299,6 +304,11 @@ export default function TrainingPlanView({
 
   const handleSaveLog = async (dayId: string) => {
     if (!loggingData) return;
+
+    if (loggingData.actualMiles === null || isNaN(loggingData.actualMiles)) {
+      setLogError("Actual miles must be a valid number");
+      return;
+    }
 
     setSavingLogId(dayId);
     setLogError(null);
@@ -825,7 +835,7 @@ export default function TrainingPlanView({
                                                 min="0"
                                                 step="0.1"
                                                 value={
-                                                  editingDayData?.miles || 0
+                                                  editingDayData?.miles ?? ''
                                                 }
                                                 onChange={e =>
                                                   setEditingDayData(prev =>
@@ -833,9 +843,11 @@ export default function TrainingPlanView({
                                                       ? {
                                                           ...prev,
                                                           miles:
-                                                            parseFloat(
-                                                              e.target.value
-                                                            ) || 0,
+                                                            e.target.value === ''
+                                                              ? null
+                                                              : parseFloat(
+                                                                  e.target.value
+                                                                ),
                                                         }
                                                       : null
                                                   )
@@ -973,7 +985,7 @@ export default function TrainingPlanView({
                                                 min="0"
                                                 step="0.1"
                                                 value={
-                                                  loggingData?.actualMiles || 0
+                                                  loggingData?.actualMiles ?? ''
                                                 }
                                                 onChange={e =>
                                                   setLoggingData(prev =>
@@ -981,9 +993,11 @@ export default function TrainingPlanView({
                                                       ? {
                                                           ...prev,
                                                           actualMiles:
-                                                            parseFloat(
-                                                              e.target.value
-                                                            ) || 0,
+                                                            e.target.value === ''
+                                                              ? null
+                                                              : parseFloat(
+                                                                  e.target.value
+                                                                ),
                                                         }
                                                       : null
                                                   )

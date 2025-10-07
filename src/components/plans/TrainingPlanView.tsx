@@ -21,12 +21,6 @@ type ViewMode = "weekly" | "calendar" | "stats";
 
 // Define types for the day objects that can have either workout relations or legacy properties
 type TrainingDayWithData = PlanWithRelations["weeks"][0]["trainingDays"][0] & {
-  workout?: {
-    id: string;
-    miles: string;
-    description: string;
-    isWorkout: boolean;
-  };
   // Legacy properties that might exist
   miles?: string;
   description?: string;

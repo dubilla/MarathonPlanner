@@ -102,14 +102,30 @@ export async function POST(
             const newDayDate = new Date(day.date);
             newDayDate.setTime(newDayDate.getTime() + dateDiff);
 
-            return {
-              ...day,
+            // Include legacy miles/description for savePlan to use
+            // savePlan will create new workout records
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const newDay: any = {
               id: crypto.randomUUID(),
               weekId: newWeekId,
+              dayOfWeek: day.dayOfWeek,
               date: newDayDate.toISOString().split("T")[0],
+              workoutId: null, // Will be created by savePlan
+              actualMiles: null,
+              actualNotes: null,
+              completed: false,
+              completedAt: null,
               createdAt: new Date(),
               updatedAt: new Date(),
             };
+
+            // Add miles/description from workout if it exists (for savePlan to create new workout)
+            if (day.workout) {
+              newDay.miles = day.workout.miles;
+              newDay.description = day.workout.description;
+            }
+
+            return newDay;
           }),
         };
       }),

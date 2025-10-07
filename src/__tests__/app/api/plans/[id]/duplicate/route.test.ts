@@ -70,20 +70,42 @@ describe("/api/plans/[id]/duplicate", () => {
             weekId: "week-1",
             dayOfWeek: 1,
             date: "2024-06-17",
-            miles: "5.00",
-            description: "Easy Run",
+            workoutId: "original-workout-1",
+            actualMiles: null,
+            actualNotes: null,
+            completed: false,
+            completedAt: null,
             createdAt: new Date("2024-01-01"),
             updatedAt: new Date("2024-01-01"),
+            workout: {
+              id: "original-workout-1",
+              miles: "5.00",
+              description: "Easy Run",
+              isWorkout: false,
+              createdAt: new Date("2024-01-01"),
+              updatedAt: new Date("2024-01-01"),
+            },
           },
           {
             id: "day-2",
             weekId: "week-1",
             dayOfWeek: 2,
             date: "2024-06-18",
-            miles: "6.00",
-            description: "Workout",
+            workoutId: "original-workout-2",
+            actualMiles: null,
+            actualNotes: null,
+            completed: false,
+            completedAt: null,
             createdAt: new Date("2024-01-01"),
             updatedAt: new Date("2024-01-01"),
+            workout: {
+              id: "original-workout-2",
+              miles: "6.00",
+              description: "Tempo Workout",
+              isWorkout: true,
+              createdAt: new Date("2024-01-01"),
+              updatedAt: new Date("2024-01-01"),
+            },
           },
         ],
       },
@@ -448,6 +470,56 @@ describe("/api/plans/[id]/duplicate", () => {
           goalTime: null,
         })
       );
+    });
+
+    it("should duplicate workouts with new IDs instead of reusing original workout IDs", async () => {
+      mockGetServerSession.mockResolvedValue(mockSession);
+      mockGetFullTrainingPlan.mockResolvedValueOnce(mockSourcePlan);
+      mockSavePlan.mockResolvedValue({
+        id: "new-plan-id",
+        userId: mockUser.id,
+        name: mockDuplicateRequest.name,
+        description: mockDuplicateRequest.description,
+        marathonDate: mockDuplicateRequest.marathonDate,
+        goalTime: mockDuplicateRequest.goalTime,
+        totalWeeks: 18,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const request = new NextRequest(
+        "http://localhost/api/plans/plan-123/duplicate",
+        {
+          method: "POST",
+          body: JSON.stringify(mockDuplicateRequest),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const params = Promise.resolve({ id: "plan-123" });
+      await POST(request, { params });
+
+      // Verify that savePlan was called
+      expect(mockSavePlan).toHaveBeenCalled();
+
+      // Get the plan object that was passed to savePlan
+      const savedPlanArg = mockSavePlan.mock.calls[0][0];
+
+      // Verify that training days have workout data as legacy properties
+      const firstDay = savedPlanArg.weeks[0].trainingDays[0];
+      const secondDay = savedPlanArg.weeks[0].trainingDays[1];
+
+      // Verify workout data is included as legacy miles/description properties
+      // (savePlan will use these to create new workout records)
+      expect(firstDay.miles).toBe("5.00");
+      expect(firstDay.description).toBe("Easy Run");
+
+      expect(secondDay.miles).toBe("6.00");
+      expect(secondDay.description).toBe("Tempo Workout");
+
+      // Verify that workoutId is null (savePlan will create new workout records)
+      expect(firstDay.workoutId).toBeNull();
+      expect(secondDay.workoutId).toBeNull();
     });
   });
 });

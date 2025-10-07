@@ -8,7 +8,18 @@ export interface CreateMarathonPlanInput {
 
 export type PlanWithRelations = TrainingPlan & {
   weeks: (TrainingWeek & {
-    trainingDays: TrainingDay[];
+    trainingDays: (TrainingDay & {
+      workout?:
+        | {
+            id: string;
+            miles: string;
+            description: string;
+            isWorkout: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+          }
+        | null;
+    })[];
   })[];
 };
 

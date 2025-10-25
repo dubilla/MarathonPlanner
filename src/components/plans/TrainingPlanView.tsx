@@ -9,6 +9,19 @@ interface TrainingPlanViewProps {
   onBack: () => void;
 }
 
+interface UpdatedTrainingDay {
+  id: string;
+  workout?: {
+    miles: string;
+    description: string;
+    isWorkout: boolean;
+  };
+  actualMiles?: string;
+  actualNotes?: string;
+  completed?: boolean;
+  completedAt?: Date;
+}
+
 interface WorkoutProgress {
   dayId: string;
   completed: boolean;
@@ -60,10 +73,11 @@ const isWorkoutDay = (day: TrainingDayWithData): boolean => {
 };
 
 export default function TrainingPlanView({
-  plan,
+  plan: initialPlan,
   onBack,
 }: TrainingPlanViewProps) {
   const router = useRouter();
+  const [plan, setPlan] = useState(initialPlan);
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [workoutProgress, setWorkoutProgress] = useState<
@@ -246,7 +260,7 @@ export default function TrainingPlanView({
   const handleSaveDay = async (dayId: string) => {
     if (!editingDayData) return;
 
-    if (editingDayData.miles === null || isNaN(editingDayData.miles)) {
+    if (editingDayData.miles !== null && editingDayData.miles !== 0 && isNaN(editingDayData.miles)) {
       setDayEditError("Miles must be a valid number");
       return;
     }
@@ -272,6 +286,25 @@ export default function TrainingPlanView({
         setDayEditError(errorData.error || "Failed to update training day");
         return;
       }
+
+      const data = await response.json();
+      const updatedDay: UpdatedTrainingDay = data.trainingDay;
+
+      // Update the local plan state with the new workout data
+      setPlan(prevPlan => ({
+        ...prevPlan,
+        weeks: prevPlan.weeks.map(week => ({
+          ...week,
+          trainingDays: week.trainingDays.map(day =>
+            day.id === dayId
+              ? {
+                  ...day,
+                  workout: updatedDay.workout || day.workout,
+                } as typeof day
+              : day
+          ),
+        })),
+      }));
 
       setEditingDayId(null);
       setEditingDayData(null);
@@ -331,6 +364,28 @@ export default function TrainingPlanView({
         setLogError(errorData.error || "Failed to log training day");
         return;
       }
+
+      const data = await response.json();
+      const updatedDay: UpdatedTrainingDay = data.trainingDay;
+
+      // Update the local plan state with the new actual data
+      setPlan(prevPlan => ({
+        ...prevPlan,
+        weeks: prevPlan.weeks.map(week => ({
+          ...week,
+          trainingDays: week.trainingDays.map(day =>
+            day.id === dayId
+              ? {
+                  ...day,
+                  actualMiles: updatedDay.actualMiles ?? null,
+                  actualNotes: updatedDay.actualNotes ?? null,
+                  completed: updatedDay.completed ?? day.completed,
+                  completedAt: updatedDay.completedAt ?? null,
+                } as typeof day
+              : day
+          ),
+        })),
+      }));
 
       setLoggingDayId(null);
       setLoggingData(null);

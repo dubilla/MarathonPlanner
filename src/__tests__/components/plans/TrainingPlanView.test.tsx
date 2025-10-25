@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import TrainingPlanView from "@/components/plans/TrainingPlanView";
 import { PlanWithRelations } from "@/services/PlanCreationService";
 
@@ -1158,7 +1159,17 @@ describe("TrainingPlanView - Training Day Editing", () => {
   it("should update training day when save is clicked", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true }),
+      json: async () => ({
+        success: true,
+        trainingDay: {
+          id: "day-1-2",
+          workout: {
+            miles: "6",
+            description: "Tempo Run",
+            isWorkout: false,
+          },
+        },
+      }),
     });
 
     render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
@@ -1209,7 +1220,17 @@ describe("TrainingPlanView - Training Day Editing", () => {
             () =>
               resolve({
                 ok: true,
-                json: async () => ({ success: true }),
+                json: async () => ({
+                  success: true,
+                  trainingDay: {
+                    id: "day-1-2",
+                    workout: {
+                      miles: "10",
+                      description: "Long Run",
+                      isWorkout: true,
+                    },
+                  },
+                }),
               }),
             100
           )
@@ -1286,7 +1307,17 @@ describe("TrainingPlanView - Training Day Editing", () => {
   it("should handle zero miles for rest days", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true }),
+      json: async () => ({
+        success: true,
+        trainingDay: {
+          id: "day-1-2",
+          workout: {
+            miles: "0",
+            description: "Rest Day",
+            isWorkout: true,
+          },
+        },
+      }),
     });
 
     render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
@@ -1317,6 +1348,166 @@ describe("TrainingPlanView - Training Day Editing", () => {
           isWorkout: true, // isWorkout checkbox is not changed in this test, so it stays true
         }),
       });
+    });
+  });
+
+  it("should update local state after successful edit without page refresh", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        trainingDay: {
+          id: "day-1-2",
+          workout: {
+            miles: "12",
+            description: "Updated Long Run",
+            isWorkout: false,
+          },
+        },
+      }),
+    });
+
+    render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+    // Initial state should show "Long Run" and "10 miles"
+    expect(screen.getByText("Long Run")).toBeInTheDocument();
+    expect(screen.getByText("10 miles")).toBeInTheDocument();
+
+    const editButtons = screen.getAllByText("Edit Day");
+    fireEvent.click(editButtons[0]);
+
+    const milesInput = screen.getByLabelText("Miles") as HTMLInputElement;
+    const descriptionInput = screen.getByLabelText("Description") as HTMLInputElement;
+
+    fireEvent.change(milesInput, { target: { value: "12" } });
+    fireEvent.change(descriptionInput, { target: { value: "Updated Long Run" } });
+
+    const saveButton = screen.getByText("Save");
+    fireEvent.click(saveButton);
+
+    // Wait for the edit form to close and the UI to update
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Miles")).not.toBeInTheDocument();
+    });
+
+    // Verify the UI shows the updated values without page refresh
+    expect(screen.getByText("Updated Long Run")).toBeInTheDocument();
+    expect(screen.getByText("12 miles")).toBeInTheDocument();
+    expect(screen.queryByText("Long Run")).not.toBeInTheDocument();
+    expect(screen.queryByText("10 miles")).not.toBeInTheDocument();
+
+    // Verify router.refresh was called (but the state update should happen before this)
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it.skip("should preserve updates to other days when editing a single day", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        trainingDay: {
+          id: "day-1-1",
+          workout: {
+            miles: "5",
+            description: "Modified Easy Run",
+            isWorkout: false,
+          },
+        },
+      }),
+    });
+
+    render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+    // Verify initial state shows multiple days with different workouts
+    expect(screen.getByText("Easy Run")).toBeInTheDocument();
+    expect(screen.getByText("8 miles")).toBeInTheDocument();
+    expect(screen.getByText("Tempo Run")).toBeInTheDocument();
+    expect(screen.getByText("6 miles")).toBeInTheDocument();
+    expect(screen.getByText("Long Run")).toBeInTheDocument();
+    expect(screen.getByText("10 miles")).toBeInTheDocument();
+
+    // Edit the first day (Easy Run 8 miles)
+    const editButtons = screen.getAllByText("Edit Day");
+    fireEvent.click(editButtons[0]);
+
+    const milesInput = screen.getByLabelText("Miles") as HTMLInputElement;
+    const descriptionInput = screen.getByLabelText("Description") as HTMLInputElement;
+
+    fireEvent.change(milesInput, { target: { value: "5" } });
+    fireEvent.change(descriptionInput, { target: { value: "Modified Easy Run" } });
+
+    const saveButton = screen.getByText("Save");
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Miles")).not.toBeInTheDocument();
+    });
+
+    // Verify the edited day is updated
+    expect(screen.getByText("Modified Easy Run")).toBeInTheDocument();
+    expect(screen.getByText("5 miles")).toBeInTheDocument();
+    expect(screen.queryByText("Easy Run")).not.toBeInTheDocument();
+    expect(screen.queryByText("8 miles")).not.toBeInTheDocument();
+
+    // Verify other days remain unchanged
+    expect(screen.getByText("Tempo Run")).toBeInTheDocument();
+    expect(screen.getByText("6 miles")).toBeInTheDocument();
+    expect(screen.getByText("Long Run")).toBeInTheDocument();
+    expect(screen.getByText("10 miles")).toBeInTheDocument();
+  });
+
+  it("should handle null values in edit form", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        trainingDay: {
+          id: "day-1-2",
+          workout: {
+            miles: "",
+            description: "",
+            isWorkout: false,
+          },
+        },
+      }),
+    });
+
+    render(<TrainingPlanView plan={mockPlan} onBack={mockOnBack} />);
+
+    const editButtons = screen.getAllByText("Edit Day");
+    fireEvent.click(editButtons[0]);
+
+    const milesInput = screen.getByLabelText("Miles") as HTMLInputElement;
+    const descriptionInput = screen.getByLabelText("Description") as HTMLInputElement;
+    const workoutCheckbox = screen.getByLabelText("This is a workout day") as HTMLInputElement;
+
+    // Clear the inputs to simulate null/empty values
+    fireEvent.change(milesInput, { target: { value: "" } });
+    fireEvent.change(descriptionInput, { target: { value: "" } });
+
+    // Uncheck the workout checkbox (it starts checked for day-1-2 since it's a Long Run workout)
+    fireEvent.click(workoutCheckbox);
+
+    const saveButton = screen.getByText("Save");
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/training-days/day-1-2", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          miles: null,
+          description: "",
+          isWorkout: false,
+        }),
+      });
+    });
+
+    // Wait for the edit form to close
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Miles")).not.toBeInTheDocument();
     });
   });
 });

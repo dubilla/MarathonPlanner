@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import NewPlanForm from "@/components/plans/NewPlanForm";
 
 jest.mock("@/hooks/useAuth");
-jest.mock("@/services/PlanCreationService");
+jest.mock("@/services/PlanCreator");
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 

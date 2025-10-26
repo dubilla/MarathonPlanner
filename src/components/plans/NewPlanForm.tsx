@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { CreateMarathonPlanInput } from "@/services/PlanCreationService";
+import { CreateMarathonPlanInput } from "@/services/PlanCreator";
 
 interface NewPlanFormProps {
   onSubmit?: (input: CreateMarathonPlanInput) => Promise<void>;

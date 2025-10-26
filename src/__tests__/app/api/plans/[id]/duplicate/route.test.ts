@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/plans/[id]/duplicate/route";
 import { getServerSession } from "next-auth";
 import { getFullTrainingPlan, savePlan } from "@/lib/db/queries";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 // Mock dependencies
 jest.mock("next-auth", () => ({

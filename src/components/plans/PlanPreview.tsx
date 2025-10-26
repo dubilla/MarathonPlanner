@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 interface PlanPreviewProps {
   plan: PlanWithRelations;

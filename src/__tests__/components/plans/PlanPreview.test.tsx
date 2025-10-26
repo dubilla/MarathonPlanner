@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PlanPreview from "@/components/plans/PlanPreview";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 const generateMockWeek = (weekNumber: number) => {
   const baseDate = new Date("2024-06-10");

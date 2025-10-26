@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import TrainingPlanView from "@/components/plans/TrainingPlanView";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 // Mock Next.js router
 const mockPush = jest.fn();

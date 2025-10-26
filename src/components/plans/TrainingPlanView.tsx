@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 interface TrainingPlanViewProps {
   plan: PlanWithRelations;

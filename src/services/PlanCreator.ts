@@ -23,7 +23,7 @@ export type PlanWithRelations = TrainingPlan & {
   })[];
 };
 
-export class PlanCreationService {
+export class PlanCreator {
   async createMarathonPlan(
     input: CreateMarathonPlanInput
   ): Promise<PlanWithRelations> {
@@ -94,7 +94,7 @@ export class PlanCreationService {
       planId,
       weekNumber,
       startDate: startDate.toISOString().split("T")[0],
-      targetMileage: weeklyMileage.toFixed(2),
+      targetMileage: Math.round(weeklyMileage).toString(),
       actualMileage: null,
       notes: null,
       createdAt: new Date(),
@@ -181,7 +181,7 @@ export class PlanCreationService {
       createdAt: new Date(),
       updatedAt: new Date(),
       // Legacy properties for savePlan function compatibility
-      miles: miles.toFixed(2),
+      miles: Math.round(miles).toString(),
       description,
     } as TrainingDay;
   }

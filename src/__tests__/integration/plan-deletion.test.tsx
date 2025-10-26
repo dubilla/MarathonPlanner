@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import TrainingPlanView from "@/components/plans/TrainingPlanView";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 // Mock the useAuth hook
 jest.mock("@/hooks/useAuth", () => ({

@@ -11,7 +11,7 @@ import {
   type NewTrainingWeek,
   type NewTrainingDay,
 } from "./schema";
-import { PlanWithRelations } from "@/services/PlanCreationService";
+import { PlanWithRelations } from "@/services/PlanCreator";
 
 // User queries
 export const getUserByEmail = async (email: string) => {

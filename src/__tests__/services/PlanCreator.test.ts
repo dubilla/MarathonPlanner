@@ -1,10 +1,10 @@
-import { PlanCreationService } from "@/services/PlanCreationService";
+import { PlanCreator } from "@/services/PlanCreator";
 
-describe("PlanCreationService", () => {
-  let service: PlanCreationService;
+describe("PlanCreator", () => {
+  let service: PlanCreator;
 
   beforeEach(() => {
-    service = new PlanCreationService();
+    service = new PlanCreator();
   });
 
   describe("createMarathonPlan", () => {
@@ -148,8 +148,10 @@ describe("PlanCreationService", () => {
         0
       );
 
-      expect(week17TotalMiles).toBeCloseTo(week16TotalMiles * 0.75, 1);
-      expect(week18TotalMiles).toBeCloseTo(week16TotalMiles * 0.4, 1);
+      expect(week17TotalMiles).toBeGreaterThanOrEqual(Math.floor(week16TotalMiles * 0.75));
+      expect(week17TotalMiles).toBeLessThanOrEqual(Math.ceil(week16TotalMiles * 0.75));
+      expect(week18TotalMiles).toBeGreaterThanOrEqual(Math.floor(week16TotalMiles * 0.4));
+      expect(week18TotalMiles).toBeLessThanOrEqual(Math.ceil(week16TotalMiles * 0.4));
     });
 
     it("should build up mileage with oscillating pattern to peak at Week 16", async () => {

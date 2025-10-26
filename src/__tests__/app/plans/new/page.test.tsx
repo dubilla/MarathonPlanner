@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useAuth } from "@/hooks/useAuth";
-import { PlanCreationService } from "@/services/PlanCreationService";
+import { PlanCreator } from "@/services/PlanCreator";
 import PlansNewPage from "@/app/plans/new/page";
 
 jest.mock("@/hooks/useAuth");
-jest.mock("@/services/PlanCreationService");
+jest.mock("@/services/PlanCreator");
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -19,8 +19,8 @@ jest.mock("next/navigation", () => ({
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockPlanCreationService = PlanCreationService as jest.MockedClass<
-  typeof PlanCreationService
+const mockPlanCreator = PlanCreator as jest.MockedClass<
+  typeof PlanCreator
 >;
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
@@ -173,7 +173,7 @@ describe("PlansNewPage", () => {
     it("generates and shows plan preview after form submission", async () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
 
       render(<PlansNewPage />);
 
@@ -208,7 +208,7 @@ describe("PlansNewPage", () => {
       const mockCreatePlan = jest
         .fn()
         .mockImplementation(() => new Promise(() => {})); // Never resolves
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
 
       render(<PlansNewPage />);
 
@@ -236,7 +236,7 @@ describe("PlansNewPage", () => {
       const mockCreatePlan = jest
         .fn()
         .mockRejectedValue(new Error("Generation failed"));
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
 
       render(<PlansNewPage />);
 
@@ -265,13 +265,13 @@ describe("PlansNewPage", () => {
   describe("Plan Preview Actions", () => {
     beforeEach(async () => {
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
     });
 
     it("returns to form when Try Again is clicked", async () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
 
       render(<PlansNewPage />);
 
@@ -308,7 +308,7 @@ describe("PlansNewPage", () => {
     it("saves plan when Create is clicked", async () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true, plan: mockPlan }),
@@ -348,7 +348,7 @@ describe("PlansNewPage", () => {
     it("shows loading state while saving plan", async () => {
       const user = userEvent.setup();
       const mockCreatePlan = jest.fn().mockResolvedValue(mockPlan);
-      mockPlanCreationService.prototype.createMarathonPlan = mockCreatePlan;
+      mockPlanCreator.prototype.createMarathonPlan = mockCreatePlan;
       mockFetch.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       render(<PlansNewPage />);

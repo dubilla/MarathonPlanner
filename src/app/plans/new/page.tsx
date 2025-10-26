@@ -10,10 +10,10 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import NewPlanForm from "@/components/plans/NewPlanForm";
 import PlanPreview from "@/components/plans/PlanPreview";
 import {
-  PlanCreationService,
+  PlanCreator,
   CreateMarathonPlanInput,
   PlanWithRelations,
-} from "@/services/PlanCreationService";
+} from "@/services/PlanCreator";
 
 type PageState = "form" | "preview";
 
@@ -27,7 +27,7 @@ function PlansNewPageContent() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const planService = new PlanCreationService();
+  const planService = new PlanCreator();
 
   const handleFormSubmit = async (input: CreateMarathonPlanInput) => {
     const plan = await planService.createMarathonPlan(input);

@@ -45,8 +45,8 @@ next-env.d.ts
 PRD.md
 TODO.md
 
-# claude code local settings
-.claude/settings.local.json
+# claude code
+.claude/
 
 # docs
 docs/

@@ -338,5 +338,157 @@ describe("PlanCreator", () => {
       expect(Number(saturday!.miles)).toBeLessThan(14);
       expect(Number(saturday!.miles)).toBeGreaterThan(8);
     });
+
+    describe("Long Run Progression", () => {
+      it("should have progressive weekly increases in long runs", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        const longRunMiles = plan.weeks.slice(0, 16).map(week => {
+          const saturday = week.trainingDays.find(day => day.dayOfWeek === 6);
+          return Number(saturday!.miles);
+        });
+
+        // Check that long runs generally increase week over week (with some step-backs)
+        let increasingWeeks = 0;
+        for (let i = 1; i < longRunMiles.length; i++) {
+          if (longRunMiles[i] > longRunMiles[i - 1]) {
+            increasingWeeks++;
+          }
+        }
+
+        // At least 60% of weeks should show increase (allowing for step-back weeks)
+        expect(increasingWeeks).toBeGreaterThanOrEqual(9);
+      });
+
+      it("should have step-back weeks every 3-4 weeks with 20-25% reduction", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        const longRunMiles = plan.weeks.slice(0, 15).map(week => {
+          const saturday = week.trainingDays.find(day => day.dayOfWeek === 6);
+          return Number(saturday!.miles);
+        });
+
+        // Find step-back weeks (where long run is less than previous week)
+        const stepBackWeeks: number[] = [];
+        for (let i = 1; i < longRunMiles.length; i++) {
+          if (longRunMiles[i] < longRunMiles[i - 1]) {
+            stepBackWeeks.push(i);
+          }
+        }
+
+        // Should have at least 3 step-back weeks in 15 weeks (roughly every 3-4 weeks)
+        expect(stepBackWeeks.length).toBeGreaterThanOrEqual(3);
+
+        // Check that step-backs are roughly 20-25% reduction
+        stepBackWeeks.forEach(weekIndex => {
+          const previousMiles = longRunMiles[weekIndex - 1];
+          const stepBackMiles = longRunMiles[weekIndex];
+          const reductionPercent =
+            (previousMiles - stepBackMiles) / previousMiles;
+
+          // Allow some flexibility: 15-30% reduction
+          expect(reductionPercent).toBeGreaterThanOrEqual(0.15);
+          expect(reductionPercent).toBeLessThanOrEqual(0.3);
+        });
+      });
+
+      it("should increase long runs by 1-2 miles per week during build-up", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        const longRunMiles = plan.weeks.slice(0, 15).map(week => {
+          const saturday = week.trainingDays.find(day => day.dayOfWeek === 6);
+          return Number(saturday!.miles);
+        });
+
+        // Check increases between consecutive non-step-back weeks
+        for (let i = 1; i < longRunMiles.length; i++) {
+          const increase = longRunMiles[i] - longRunMiles[i - 1];
+
+          // If increasing (not a step-back week), increase should be 1-2 miles (allow up to 3)
+          if (increase > 0) {
+            expect(increase).toBeLessThanOrEqual(3);
+            expect(increase).toBeGreaterThanOrEqual(1);
+          }
+        }
+      });
+
+      it("should have proper taper pattern in final weeks", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        const week16 = plan.weeks.find(week => week.weekNumber === 16);
+        const week17 = plan.weeks.find(week => week.weekNumber === 17);
+        const week18 = plan.weeks.find(week => week.weekNumber === 18);
+
+        const week16LongRun = Number(
+          week16!.trainingDays.find(day => day.dayOfWeek === 6)!.miles
+        );
+        const week17LongRun = Number(
+          week17!.trainingDays.find(day => day.dayOfWeek === 6)!.miles
+        );
+        const week18LongRun = Number(
+          week18!.trainingDays.find(day => day.dayOfWeek === 6)!.miles
+        );
+
+        // Week 17 should be significantly less than week 16
+        expect(week17LongRun).toBeLessThan(week16LongRun);
+        expect(week17LongRun).toBeLessThanOrEqual(week16LongRun * 0.7); // At most 70% of peak
+
+        // Week 18 should be even shorter
+        expect(week18LongRun).toBeLessThan(week17LongRun);
+        expect(week18LongRun).toBeLessThanOrEqual(week16LongRun * 0.4); // At most 40% of peak
+      });
+
+      it("should start with reasonable base mileage (8-12 miles)", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        const week1 = plan.weeks.find(week => week.weekNumber === 1);
+        const week1LongRun = Number(
+          week1!.trainingDays.find(day => day.dayOfWeek === 6)!.miles
+        );
+
+        expect(week1LongRun).toBeGreaterThanOrEqual(8);
+        expect(week1LongRun).toBeLessThanOrEqual(12);
+      });
+    });
   });
 });

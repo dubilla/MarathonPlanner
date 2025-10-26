@@ -239,7 +239,6 @@ export class PlanCreator {
       return peakWeeklyMileage >= 60 ? 22 : 20;
     }
 
-    // The long run should be about 30-40% of weekly mileage
     const weeklyMileage = this.calculateWeeklyMileage(
       weekNumber,
       peakWeeklyMileage
@@ -255,8 +254,41 @@ export class PlanCreator {
       return Math.round(weeklyMileage * 0.25); // Very short run during marathon week
     }
 
-    // For build-up weeks, long run is 35-40% of weekly mileage
-    const longRunPercentage = 0.35 + (weekNumber / 16) * 0.05; // Gradually increase from 35% to 40%
-    return Math.round(weeklyMileage * longRunPercentage);
+    // For build-up weeks (1-15), use progressive long run with step-backs
+    return this.applyLongRunProgression(weekNumber, peakWeeklyMileage);
+  }
+
+  private applyLongRunProgression(
+    weekNumber: number,
+    peakWeeklyMileage: number
+  ): number {
+    // Determine target peak long run based on weekly mileage
+    const peakLongRun = peakWeeklyMileage >= 60 ? 22 : 20;
+
+    // Start with a base of 40-50% of peak long run (8-11 miles for 20 mile peak)
+    const startingLongRun = Math.round(peakLongRun * 0.4);
+
+    // Build the progression iteratively
+    let currentLongRun = startingLongRun;
+
+    for (let week = 2; week <= weekNumber; week++) {
+      // Check if this is a step-back week (every 4th week: 4, 8, 12)
+      const isStepBackWeek = week % 4 === 0;
+
+      if (isStepBackWeek) {
+        // Step back 20-25% from previous week
+        currentLongRun = Math.round(currentLongRun * 0.75); // 25% reduction
+      } else {
+        // Normal build week: increase by 1-2 miles
+        // Increase by 2 miles in early weeks (2-8), 1 mile in later weeks (9-15)
+        const weeklyIncrease = week <= 8 ? 2 : 1;
+        currentLongRun = currentLongRun + weeklyIncrease;
+
+        // Don't exceed the peak
+        currentLongRun = Math.min(currentLongRun, peakLongRun);
+      }
+    }
+
+    return currentLongRun;
   }
 }

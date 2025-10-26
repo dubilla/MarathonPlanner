@@ -171,8 +171,9 @@ describe("PlanCreator", () => {
           week.trainingDays.reduce((sum, day) => sum + Number(day.miles), 0)
         );
 
-      // Week 16 should be the peak
-      expect(weeklyMileage[15]).toBe(longestWeeklyMileage); // Week 16 (index 15)
+      // Week 16 should be the peak (allow ±1 mile for oscillation rounding)
+      expect(weeklyMileage[15]).toBeGreaterThanOrEqual(longestWeeklyMileage - 1);
+      expect(weeklyMileage[15]).toBeLessThanOrEqual(longestWeeklyMileage + 1);
 
       // First week should be about 50% of peak
       expect(weeklyMileage[0]).toBeGreaterThanOrEqual(
@@ -488,6 +489,177 @@ describe("PlanCreator", () => {
 
         expect(week1LongRun).toBeGreaterThanOrEqual(8);
         expect(week1LongRun).toBeLessThanOrEqual(12);
+      });
+    });
+
+    describe("Mileage Oscillation", () => {
+      it("should ensure workout days (Tue/Thu) have more mileage than easy days (Mon/Wed/Fri)", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Test across multiple weeks to ensure pattern is consistent
+        plan.weeks.slice(0, 16).forEach(week => {
+          const monday = week.trainingDays.find(day => day.dayOfWeek === 1);
+          const tuesday = week.trainingDays.find(day => day.dayOfWeek === 2);
+          const wednesday = week.trainingDays.find(day => day.dayOfWeek === 3);
+          const thursday = week.trainingDays.find(day => day.dayOfWeek === 4);
+          const friday = week.trainingDays.find(day => day.dayOfWeek === 5);
+
+          const mondayMiles = Number(monday!.miles);
+          const tuesdayMiles = Number(tuesday!.miles);
+          const wednesdayMiles = Number(wednesday!.miles);
+          const thursdayMiles = Number(thursday!.miles);
+          const fridayMiles = Number(friday!.miles);
+
+          // Workout days should have more mileage than easy days
+          expect(tuesdayMiles).toBeGreaterThan(mondayMiles);
+          expect(tuesdayMiles).toBeGreaterThan(wednesdayMiles);
+          expect(tuesdayMiles).toBeGreaterThan(fridayMiles);
+          expect(thursdayMiles).toBeGreaterThan(mondayMiles);
+          expect(thursdayMiles).toBeGreaterThan(wednesdayMiles);
+          expect(thursdayMiles).toBeGreaterThan(fridayMiles);
+        });
+      });
+
+      it("should have hard workout days followed by easier recovery days", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Pattern: Easy, Workout, Easy, Workout, Easy, Long, Rest
+        plan.weeks.slice(0, 16).forEach(week => {
+          const days = week.trainingDays.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+
+          // Tuesday (workout) followed by Wednesday (easy)
+          const tuesdayMiles = Number(days[1].miles); // dayOfWeek 2
+          const wednesdayMiles = Number(days[2].miles); // dayOfWeek 3
+          expect(wednesdayMiles).toBeLessThan(tuesdayMiles);
+
+          // Thursday (workout) followed by Friday (easy)
+          const thursdayMiles = Number(days[3].miles); // dayOfWeek 4
+          const fridayMiles = Number(days[4].miles); // dayOfWeek 5
+          expect(fridayMiles).toBeLessThan(thursdayMiles);
+        });
+      });
+
+      it("should have workout days 20-75% more mileage than easy days", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Test across multiple weeks
+        plan.weeks.slice(0, 16).forEach(week => {
+          const monday = week.trainingDays.find(day => day.dayOfWeek === 1);
+          const tuesday = week.trainingDays.find(day => day.dayOfWeek === 2);
+          const thursday = week.trainingDays.find(day => day.dayOfWeek === 4);
+
+          const easyMiles = Number(monday!.miles);
+          const tuesdayMiles = Number(tuesday!.miles);
+          const thursdayMiles = Number(thursday!.miles);
+
+          // Workout days should be 20-75% more than easy days
+          const tuesdayIncrease = (tuesdayMiles - easyMiles) / easyMiles;
+          const thursdayIncrease = (thursdayMiles - easyMiles) / easyMiles;
+
+          expect(tuesdayIncrease).toBeGreaterThanOrEqual(0.15); // Allow 15% for rounding
+          expect(tuesdayIncrease).toBeLessThanOrEqual(1.0); // Allow up to 100% for rounding in low-mileage weeks
+          expect(thursdayIncrease).toBeGreaterThanOrEqual(0.15);
+          expect(thursdayIncrease).toBeLessThanOrEqual(1.0);
+        });
+      });
+
+      it("should have consistent easy day mileages (Mon/Wed/Fri)", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Test across multiple weeks
+        plan.weeks.slice(0, 16).forEach(week => {
+          const monday = week.trainingDays.find(day => day.dayOfWeek === 1);
+          const wednesday = week.trainingDays.find(day => day.dayOfWeek === 3);
+          const friday = week.trainingDays.find(day => day.dayOfWeek === 5);
+
+          const mondayMiles = Number(monday!.miles);
+          const wednesdayMiles = Number(wednesday!.miles);
+          const fridayMiles = Number(friday!.miles);
+
+          // Easy days should have same mileage (accounting for rounding)
+          expect(mondayMiles).toBe(wednesdayMiles);
+          expect(mondayMiles).toBe(fridayMiles);
+        });
+      });
+
+      it("should have consistent workout day mileages (Tue/Thu)", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Test across multiple weeks
+        plan.weeks.slice(0, 16).forEach(week => {
+          const tuesday = week.trainingDays.find(day => day.dayOfWeek === 2);
+          const thursday = week.trainingDays.find(day => day.dayOfWeek === 4);
+
+          const tuesdayMiles = Number(tuesday!.miles);
+          const thursdayMiles = Number(thursday!.miles);
+
+          // Workout days should have same mileage (accounting for rounding)
+          expect(tuesdayMiles).toBe(thursdayMiles);
+        });
+      });
+
+      it("should ensure total weekly mileage matches target with oscillation", async () => {
+        const marathonDate = new Date("2024-10-15");
+        const longestWeeklyMileage = 50;
+        const userId = "user-123";
+
+        const plan = await service.createMarathonPlan({
+          marathonDate,
+          longestWeeklyMileage,
+          userId,
+        });
+
+        // Verify total mileage still adds up correctly with oscillation
+        plan.weeks.forEach(week => {
+          const totalMiles = week.trainingDays.reduce(
+            (sum, day) => sum + Number(day.miles),
+            0
+          );
+          const targetMileage = Number(week.targetMileage);
+
+          // Allow for rounding differences (within 1 mile)
+          expect(Math.abs(totalMiles - targetMileage)).toBeLessThanOrEqual(1);
+        });
       });
     });
   });

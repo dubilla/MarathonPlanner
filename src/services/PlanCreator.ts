@@ -102,14 +102,16 @@ export class PlanCreator {
       trainingDays: [],
     };
 
-    const remainingMiles = weeklyMileage - longRunMiles;
-    const dailyMiles = remainingMiles / 5;
+    // Apply mileage oscillation to get individual day mileages
+    const dayMileages = this.applyMileageOscillation(
+      weeklyMileage,
+      longRunMiles
+    );
 
     for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++) {
       const trainingDay = this.generateTrainingDay(
         dayOfWeek,
-        dailyMiles,
-        longRunMiles,
+        dayMileages,
         week.id,
         startDate
       );
@@ -121,8 +123,7 @@ export class PlanCreator {
 
   private generateTrainingDay(
     dayOfWeek: number,
-    dailyMiles: number,
-    longRunMiles: number,
+    dayMileages: { [key: number]: number },
     weekId: string,
     weekStartDate: Date
   ): TrainingDay {
@@ -131,27 +132,27 @@ export class PlanCreator {
 
     switch (dayOfWeek) {
       case 1: // Monday
-        miles = dailyMiles;
+        miles = dayMileages[1];
         description = "Easy Run";
         break;
       case 2: // Tuesday
-        miles = dailyMiles;
+        miles = dayMileages[2];
         description = "Workout";
         break;
       case 3: // Wednesday
-        miles = dailyMiles;
+        miles = dayMileages[3];
         description = "Easy Run";
         break;
       case 4: // Thursday
-        miles = dailyMiles;
+        miles = dayMileages[4];
         description = "Workout";
         break;
       case 5: // Friday
-        miles = dailyMiles;
+        miles = dayMileages[5];
         description = "Easy Run";
         break;
       case 6: // Saturday
-        miles = longRunMiles;
+        miles = dayMileages[6];
         description = "Long Run";
         break;
       case 7: // Sunday
@@ -290,5 +291,52 @@ export class PlanCreator {
     }
 
     return currentLongRun;
+  }
+
+  private applyMileageOscillation(
+    weeklyMileage: number,
+    longRunMiles: number
+  ): { [key: number]: number } {
+    // Pattern: Easy, Workout, Easy, Workout, Easy, Long, Rest
+    // Ensure hard workout days followed by easier recovery days
+    // Workout days should be 20-75% more mileage than easy days
+
+    const remainingMiles = weeklyMileage - longRunMiles;
+
+    // Make workout days ~40% harder than easy days (W = 1.4E)
+    // 3 easy days + 2 workout days = remaining miles
+    // 3E + 2W = remainingMiles
+    // 3E + 2(1.4E) = remainingMiles
+    // 3E + 2.8E = remainingMiles
+    // 5.8E = remainingMiles
+    // E = remainingMiles / 5.8
+
+    const easyMilesRaw = remainingMiles / 5.8;
+    const workoutMilesRaw = 1.4 * easyMilesRaw;
+
+    // Round the values
+    let easyMiles = Math.round(easyMilesRaw);
+    const workoutMiles = Math.round(workoutMilesRaw);
+
+    // Check if total adds up to weekly target and adjust if needed
+    const longRunRounded = Math.round(longRunMiles);
+    const calculatedTotal = 3 * easyMiles + 2 * workoutMiles + longRunRounded;
+    const targetTotal = Math.round(weeklyMileage);
+    const difference = targetTotal - calculatedTotal;
+
+    // Distribute any rounding error across easy days to maintain workout intensity
+    if (difference !== 0) {
+      easyMiles += Math.round(difference / 3);
+    }
+
+    return {
+      1: easyMiles, // Monday: Easy Run
+      2: workoutMiles, // Tuesday: Workout
+      3: easyMiles, // Wednesday: Easy Run
+      4: workoutMiles, // Thursday: Workout
+      5: easyMiles, // Friday: Easy Run
+      6: longRunRounded, // Saturday: Long Run
+      7: 0, // Sunday: Rest
+    };
   }
 }

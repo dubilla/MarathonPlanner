@@ -1,3 +1,15 @@
+## Code Organization
+
+### Service Naming Convention
+- Services should use verb-oriented naming that clearly describes their primary action
+- Use singular nouns with action verbs: `PlanCreator`, `PlanAnalyzer`, `DataValidator`, etc.
+- Avoid generic suffixes like "Service" - the verb should make the purpose clear
+- Examples:
+  - ✅ `PlanCreator` - creates training plans
+  - ✅ `PlanAnalyzer` - analyzes existing plans
+  - ❌ `PlanCreationService` - redundant "Service" suffix
+  - ❌ `PlanService` - too generic, unclear purpose
+
 ## Testing
 - We write unit tests for our application code.
 - We sparingly write integration tests for critical workflows.
